@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/wasm"]
+members = ["core", "wasm"]
 resolver = "2"
 [profile.release]
 opt-level = 3

@@ -21,10 +21,13 @@ await build({
   banner: {
     js:
       "/*\n" +
-      readFileSync("THIRD_PARTY_NOTICES.md", "utf8").replaceAll("*/", "* /") +
+      readFileSync("licenses/THIRD_PARTY_NOTICES.md", "utf8").replaceAll(
+        "*/",
+        "* /",
+      ) +
       "\n" +
       readdirSync("licenses")
-        .filter((n) => !n.endsWith(".json"))
+        .filter((n) => !n.endsWith(".json") && n !== "THIRD_PARTY_NOTICES.md")
         .sort()
         .map(
           (n) =>
@@ -54,5 +57,5 @@ await build({
 });
 
 mkdirSync("dist", { recursive: true });
-for (const name of ["manifest.json", "styles.css"])
-  copyFileSync(name, `dist/${name}`);
+copyFileSync("manifest.json", "dist/manifest.json");
+copyFileSync("src/presentation/styles.css", "dist/styles.css");

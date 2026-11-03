@@ -17,7 +17,7 @@ tests run only if `.local/assets/manifest.json` exists. No test downloads a mode
 are the distribution mechanism.
 
 The ordinary build consumes the included `resources/wasm/` artifact.
-Its complete source and locked Rust dependency graph are under `crates/` with a root Cargo workspace.
+Its complete source and locked Rust dependency graph are under `crates/` with a Cargo workspace in that directory.
 Generated bindings and WASM are included so Obsidian's Node build verifier
 and contributors do not need to install another toolchain to build the plugin.
 The artifact contains no model data, corpus, credentials, or native OS library.
@@ -30,7 +30,7 @@ wasm-pack 0.15.0:
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack --version 0.15.0 --locked
-cargo test --locked --manifest-path Cargo.toml -p softmatcha-core
+cargo test --locked --manifest-path crates/Cargo.toml -p softmatcha-core
 npm run build:wasm
 npm run check
 ```
@@ -78,7 +78,7 @@ setup, model opt-out, model ZIP validation, and excerpt range mapping. CI's
 Node Worker tests are not Obsidian or mobile-device tests.
 
 For the optional Python service, see [SERVER.md](SERVER.md). With its venv
-installed, `.local/venv/bin/python -m pytest tests/native -q` tests that path.
+installed, `.local/venv/bin/python scripts/test/native.py -q` tests that path.
 
 `node benchmarks/wasm.mjs /absolute/path/to/test-vault` prints only counts
 and timings. It reads the specified vault locally. Its fake IndexedDB is

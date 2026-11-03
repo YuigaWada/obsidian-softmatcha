@@ -25,7 +25,7 @@ for source,name in [('crates/core/LICENSE','SOFTMATCHA-APACHE-2.0.txt'),('crates
 print('Exported Japanese/English models and dictionary assets.')
 
 shutil.copy2(root/'licenses/fastText-CC-BY-SA-3.0.txt',target/'LICENSES'/'fastText-CC-BY-SA-3.0.txt')
-shutil.copy2(root/'THIRD_PARTY_NOTICES.md',target/'LICENSES'/'THIRD_PARTY_NOTICES.md')
+shutil.copy2(root/'licenses/THIRD_PARTY_NOTICES.md',target/'LICENSES'/'THIRD_PARTY_NOTICES.md')
 
 # Explicit allowlist keeps historical/generated leftovers out of model releases.
 metadata['files']=['vectors.f32','vocab.json','en/vectors.f32','en/vocab.json',*[f'dict/{f.name}' for f in files],*[f'LICENSES/{name}' for name in ['LICENSE-2.0.txt','NOTICE.md','MODEL-ja-SOURCE.txt','MODEL-en-SOURCE.txt','SOFTMATCHA-APACHE-2.0.txt','SOFTMATCHA-NOTICE.txt','PLUGIN-MIT.txt','fastText-CC-BY-SA-3.0.txt','THIRD_PARTY_NOTICES.md']]]

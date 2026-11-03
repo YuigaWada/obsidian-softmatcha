@@ -20,7 +20,7 @@ assert.equal(manifest.isDesktopOnly, false);
 for (const file of [
   "README.md",
   "LICENSE",
-  "THIRD_PARTY_NOTICES.md",
+  "licenses/THIRD_PARTY_NOTICES.md",
   "resources/wasm/softmatcha_wasm_bg.wasm",
 ])
   assert.ok(fs.existsSync(file), file + " is missing");
@@ -70,8 +70,8 @@ const rustFiles = (dir) =>
           : [],
     );
 const sourceFiles = [
-  "Cargo.toml",
-  "Cargo.lock",
+  "crates/Cargo.toml",
+  "crates/Cargo.lock",
   "crates/core/Cargo.toml",
   "crates/wasm/Cargo.toml",
   ...rustFiles("crates/core/src"),

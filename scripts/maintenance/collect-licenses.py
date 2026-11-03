@@ -6,7 +6,7 @@ for name in ['fflate','kuromoji','doublearray','async','lodash','zlibjs']:
     package=root/'node_modules'/name
     for file in package.iterdir():
         if file.is_file() and file.name.lower().startswith(('license','licence','copying','notice')):shutil.copy2(file,out/f'{name}-{file.name}')
-metadata=json.loads(subprocess.check_output(['cargo','metadata','--manifest-path',str(root/'Cargo.toml'),'--format-version','1','--locked'],text=True))
+metadata=json.loads(subprocess.check_output(['cargo','metadata','--manifest-path',str(root/'crates/Cargo.toml'),'--format-version','1','--locked'],text=True))
 rows=[]
 for package in sorted(metadata['packages'],key=lambda p:p['name']):
     if package['name'].startswith('softmatcha-'):continue

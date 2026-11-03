@@ -2,7 +2,7 @@
 
 英語・日本語のMarkdownノートを検索します。モデルなしでファイル名と本文の文字列一致を検索でき、任意のモデルパックを追加するとSoftMatcha 2による意味検索も使えます。
 
-[English](README.md) · [開発](docs/DEVELOPMENT.md) · [ディレクトリ構成](docs/DIRECTORY_STRUCTURE.md) · [公開手順](docs/RELEASING.md)
+[English](../README.md) · [開発](DEVELOPMENT.md) · [ディレクトリ構成](DIRECTORY_STRUCTURE.md) · [公開手順](RELEASING.md)
 
 ## 主な機能
 
@@ -41,10 +41,10 @@ Obsidian 1.8.7以降向けです。macOS / Obsidian 1.15.0で検索・設定画�
 
 端末内検索は通信せず、ノートをアップロードしません。テレメトリ・広告・必須アカウント・料金はありません。モデルの手動取得先はGitHub Releases、モデルを作る開発用スクリプトの取得先はfastText公式配布です。
 
-索引にはノート本文と位置情報が含まれ、アプリのIndexedDBに保存されます。モデル・設定はプラグインの設定フォルダーに保存されます。索引の削除やOSによる破棄後は再構築します。モデル取り込みで明示的に選んだZIPを除き、vault外を読み取ったりファイルシステムを走査したりしません。[プライバシーの詳細](docs/PRIVACY.md)
+索引にはノート本文と位置情報が含まれ、アプリのIndexedDBに保存されます。モデル・設定はプラグインの設定フォルダーに保存されます。索引の削除やOSによる破棄後は再構築します。モデル取り込みで明示的に選んだZIPを除き、vault外を読み取ったりファイルシステムを走査したりしません。[プライバシーの詳細](PRIVACY.md)
 
 ## ライセンス
 
-独自コードは[MIT](LICENSE)。SoftMatcha 2移植部分はApache-2.0と一部MIT、fastTextモデルはCC BY-SA 3.0、IPADIC辞書は元のNAIST/ICOT条件を維持します。[第三者ライセンス](THIRD_PARTY_NOTICES.md)と同梱の全文を参照してください。
+独自コードは[MIT](../LICENSE)。SoftMatcha 2移植部分はApache-2.0と一部MIT、fastTextモデルはCC BY-SA 3.0、IPADIC辞書は元のNAIST/ICOT条件を維持します。[第三者ライセンス](../licenses/THIRD_PARTY_NOTICES.md)と同梱の全文を参照してください。
 
 リポジトリ名は **SoftMatcha-for-Obsidian**、公開用の表示名は **SoftMatcha Search** です。Obsidian公式・SoftMatcha公式の製品ではありません。

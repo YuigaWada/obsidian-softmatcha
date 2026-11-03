@@ -8,11 +8,12 @@ version=json.loads((root/'manifest.json').read_text())['version'];out=root/'dist
 def archive_file(archive,name,raw):
     info=ZipInfo(name,date_time=(2026,1,1,0,0,0));info.compress_type=ZIP_DEFLATED;info.external_attr=0o644<<16
     archive.writestr(info,raw,compresslevel=9)
-for name in ['manifest.json','styles.css']:shutil.copy2(root/name,out/name)
+shutil.copy2(root/'manifest.json',out/'manifest.json')
+shutil.copy2(root/'src/presentation/styles.css',out/'styles.css')
 zip_path=out/'softmatcha-for-obsidian.zip'
 with ZipFile(zip_path,'w') as archive:
-    for name in ['main.js','manifest.json','styles.css','LICENSE','THIRD_PARTY_NOTICES.md','README.md']:
-        archive_file(archive,name,((out if name=='main.js' else root)/name).read_bytes())
+    for name in ['main.js','manifest.json','styles.css','LICENSE','README.md']:
+        archive_file(archive,name,((out if name in ('main.js','styles.css') else root)/name).read_bytes())
     for file in sorted((root/'licenses').glob('*')):
         if file.is_file():archive_file(archive,'licenses/'+file.name,file.read_bytes())
 if args.models:

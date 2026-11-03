@@ -3,6 +3,7 @@
 ```text
 SoftMatcha-for-Obsidian/
 ├── src/                     Obsidian plugin (domain/application/adapters/UI)
+├── config/                  ESLint, TypeScript and Python tool configuration
 ├── crates/
 │   ├── core/                Portable Rust search engine
 │   └── wasm/                wasm-bindgen entry point
@@ -14,7 +15,8 @@ SoftMatcha-for-Obsidian/
 │   ├── build/               Plugin bundling and WASM regeneration
 │   ├── models/              Public model preparation, export and catalog
 │   ├── release/             Packaging, version updates and release validation
-│   └── maintenance/         Third-party license collection
+│   ├── maintenance/         Third-party license collection
+│   └── test/                Plugin and optional native test entry points
 ├── tests/
 │   ├── unit/                Use cases, UI behavior, settings and pack validation
 │   ├── integration/         Actual WASM Worker tests
@@ -29,9 +31,12 @@ SoftMatcha-for-Obsidian/
 └── dist/                    Ignored final plugin files, ZIPs and checksums
 ```
 
-`Cargo.toml` and `Cargo.lock` define the Rust workspace at the root. Obsidian's
-manifest, stylesheet and versions file stay at the root, along with package
-metadata and public project documents. `npm run build` writes the installation
+`crates/Cargo.toml` and `crates/Cargo.lock` define the Rust workspace. Obsidian's
+manifest and versions file stay at the root, along with package
+npm metadata, README and LICENSE. Styles live in
+`src/presentation/styles.css`; Python tooling configuration lives with the
+other tool settings in `config/python/pyproject.toml`. Community
+guides live in `.github/`, and the changelog lives in `docs/`. `npm run build` writes the installation
 files into `dist/`, not alongside the source.
 
 ## Local and generated data
@@ -62,3 +67,27 @@ and is distributed through the explicit model-pack release step.
 The installed plugin's own `assets/` directory is a separate runtime location
 inside the vault configuration directory. Its import format and note paths do
 not change when the source repository is rearranged.
+
+## Placement rules
+
+- `src/` and `crates/` contain production implementations; test fixtures and
+  developer tools do not belong there.
+- `resources/` contains checked-in inputs required by the plugin build.
+  `build/` and `dist/` contain disposable outputs, never source files.
+- `config/` holds development-tool configuration. Package scripts supply explicit
+  paths so contributors use the same commands from the repository root.
+- `scripts/` contains task entry points grouped by purpose; `dev/` contains the
+  optional standalone reference implementation.
+- `docs/` contains detailed project documentation. GitHub community documents
+  belong in `.github/`; third-party legal material belongs in `licenses/`.
+- Root files are limited to project entry points and metadata: npm manifest/lockfile, Obsidian manifest/version metadata, README, and LICENSE. Hidden root configuration remains only where tools discover it there.
+
+Add files to the existing owner directory rather than creating another root
+utility file. See `docs/DEVELOPMENT.md` for build and verification commands.
+
+The six non-hidden root files are `README.md`, `LICENSE`, `manifest.json`,
+`versions.json`, `package.json`, and `package-lock.json`. Obsidian requires the
+root manifest for submission and reads root version metadata for compatibility;
+keeping npm metadata here preserves the ordinary build/review entry point.
+Japanese documentation lives in `docs/README.ja.md`; third-party notices live
+in `licenses/THIRD_PARTY_NOTICES.md`.

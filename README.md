@@ -4,7 +4,7 @@ Find English and Japanese passages in your Markdown notes. Search exact text
 out of the box, or add optional local models to find semantically similar words
 with the SoftMatcha 2 engine.
 
-[日本語](README.ja.md) · [Setup](#optional-semantic-search) · [Development](docs/DEVELOPMENT.md) · [Repository layout](docs/DIRECTORY_STRUCTURE.md) · [Privacy](docs/PRIVACY.md)
+[日本語](docs/README.ja.md) · [Setup](#optional-semantic-search) · [Development](docs/DEVELOPMENT.md) · [Repository layout](docs/DIRECTORY_STRUCTURE.md) · [Privacy](docs/PRIVACY.md)
 
 ## Features
 
@@ -118,15 +118,15 @@ The full Rust source is included, with regeneration and upstream attribution in
 [development](docs/DEVELOPMENT.md). Actual-model tests run when local assets are
 present; the ordinary tests use synthetic data and do not download anything.
 
-[Release procedure](docs/RELEASING.md) · [Contributing](CONTRIBUTING.md) ·
-[Architecture](docs/ARCHITECTURE.md) · [Changelog](CHANGELOG.md)
+[Release procedure](docs/RELEASING.md) · [Contributing](.github/CONTRIBUTING.md) ·
+[Architecture](docs/ARCHITECTURE.md) · [Changelog](docs/CHANGELOG.md)
 
 ## License and acknowledgments
 
 Original plugin/application code: [MIT](LICENSE). The included SoftMatcha 2 port
 retains Apache-2.0 and attributed MIT portions. fastText vector subsets remain
 CC BY-SA 3.0; the Japanese IPADIC dictionary retains its NAIST/ICOT notices.
-See [third-party notices](THIRD_PARTY_NOTICES.md) and `licenses/` for the full
+See [third-party notices](licenses/THIRD_PARTY_NOTICES.md) and `licenses/` for the full
 texts, upstream commit, authors, and changes. Model data is distributed
 separately from the plugin code.
 
