@@ -1,0 +1,3 @@
+.softmatcha-title{font-weight:600}.softmatcha-excerpt{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text-muted);max-height:6em;overflow:hidden}.softmatcha-meta,.softmatcha-status{color:var(--text-muted);font-size:var(--font-ui-small)}.softmatcha-status{padding:var(--size-4-3)}
+
+.softmatcha-excerpt mark.softmatcha-match{background-color:var(--text-highlight-bg);color:var(--text-normal);padding:0;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}

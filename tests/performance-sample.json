@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-03",
+  "backend": "compact-ja",
+  "shards": 8,
+  "limit": 50,
+  "timing_scope": "in-process Engine.search, excluding UI debounce, HTTP, render",
+  "before_seconds": [
+    4.571,
+    2.913,
+    2.681
+  ],
+  "after_seconds": [
+    0.913,
+    0.046,
+    0.062,
+    0.052,
+    0.056,
+    0.057
+  ],
+  "after_queries": [
+    "検索",
+    "検索",
+    "機械学習",
+    "人工知能",
+    "検索",
+    "機械学習"
+  ],
+  "warning": "Small workload-specific sample; not a cross-device or full-model benchmark."
+}

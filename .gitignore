@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+server/vendor/
+server/state/
+*.log
+local-backup/

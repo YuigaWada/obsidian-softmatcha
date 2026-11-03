@@ -1,0 +1,15 @@
+diff --git a/rust/src/search/z_core.rs b/rust/src/search/z_core.rs
+index 41a3983..0f8ff87 100644
+--- a/rust/src/search/z_core.rs
++++ b/rust/src/search/z_core.rs
+@@ -109,8 +109,8 @@ pub fn compute(
+ 			}
+ 		}
+ 		inst_tmp.par_sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+-		let mut actual_inst_rank: usize = inst_rank;
+-		for i in 1..inst_rank {
++		let mut actual_inst_rank: usize = inst_rank.min(inst_tmp.len().saturating_sub(1));
++		for i in 1..=actual_inst_rank {
+ 			if inst_tmp[i].0 >= 1.0e10 {
+ 				actual_inst_rank = i - 1;
+ 				break;
