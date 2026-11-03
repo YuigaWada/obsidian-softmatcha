@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-03",
+  "runtime": "Node.js v22.23.2 Worker + real WASM + fake-indexeddb",
+  "model": "compact-ja 50000 words, 300 dimensions",
+  "notes": 908,
+  "bytes": 7193034,
+  "model_and_dictionary_ms": 660,
+  "initial_index_ms": 89126,
+  "cache_restore_ms": 475,
+  "restored_shards": 8,
+  "rebuilt_shards": 0,
+  "queries": [
+    {
+      "query": "検索",
+      "ms": 160,
+      "results": 50
+    },
+    {
+      "query": "機械学習",
+      "ms": 34,
+      "results": 50
+    },
+    {
+      "query": "人工知能",
+      "ms": 27,
+      "results": 6
+    }
+  ],
+  "limits": "Local sample; excludes UI debounce, transport and rendering. Not iOS measurements."
+}

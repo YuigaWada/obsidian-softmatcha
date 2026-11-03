@@ -6,3 +6,7 @@ server/vendor/
 server/state/
 *.log
 local-backup/
+rust/target/
+rust/pkg/
+dist/
+assets/

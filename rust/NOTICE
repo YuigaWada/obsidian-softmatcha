@@ -1,0 +1,9 @@
+SoftMatcha-for-Obsidian
+
+The files core/src/upstream/z_*.rs and core/src/helper.rs are derived from
+softmatcha/softmatcha2 at b37e104741465a31425db5f07202d8065af7d571,
+developed by Masataka Yoneda, licensed under Apache-2.0.
+Changes: Python/NumPy bindings removed; ndarray used directly; Unix file I/O
+replaced by immutable byte slices; Rayon replaced by sequential iteration;
+web-time clock used; small-vocabulary and integer-overflow guards added.
+The soft-pattern enumeration and corpus-aware pruning algorithms are retained.

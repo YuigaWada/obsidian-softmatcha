@@ -8,6 +8,7 @@ COPY compat.patch /app/compat.patch
 RUN git -C /app/vendor apply /app/compat.patch
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir /app/vendor maturin -r requirements.txt && maturin develop --release --manifest-path /app/vendor/rust/Cargo.toml
-COPY service.py model_adapter.py index_entry.py resident.py /app/
+COPY service.py http_api.py search_domain.py search_application.py model_adapter.py index_entry.py resident.py /app/
+COPY infrastructure/ /app/infrastructure/
 EXPOSE 8769
 ENTRYPOINT ["python", "service.py", "--host", "0.0.0.0", "--vault", "/vault", "--state", "/state"]
