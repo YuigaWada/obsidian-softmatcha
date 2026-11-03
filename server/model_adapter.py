@@ -3,10 +3,11 @@ from pathlib import Path
 import gzip,json,os,urllib.request
 import numpy as np
 
-def prepare(directory:Path,limit=50000):
+def prepare(directory:Path,limit=50000,language="ja"):
+    if language not in ("ja","en"):raise ValueError("Unsupported model language")
     directory.mkdir(parents=True,exist_ok=True)
     if (directory/'vocab.json').exists() and (directory/'embedding.npy').exists():return
-    url='https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.ja.300.vec.gz'
+    url=f'https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.{language}.300.vec.gz'
     dictionary={};vectors=[]
     # Stream and close after the requested vocabulary: never download the full model.
     with urllib.request.urlopen(url,timeout=120) as response,gzip.GzipFile(fileobj=response) as stream:

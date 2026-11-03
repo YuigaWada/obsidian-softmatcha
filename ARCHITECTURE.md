@@ -1,6 +1,5 @@
-# SoftMatcha-for-Obsidian の設計
+# SoftMatcha Search の設計
 
-独立Gitリポジトリはこのディレクトリの `.git/`。移行前の実装は `57cd2c2` に保存した。vault本体のGit履歴とは別管理で、モデル、索引、依存物、ノート本文はこの履歴へ追加しない。
 
 ## 境界と用語
 
@@ -16,14 +15,12 @@ DDDの境界と不変条件をコードへ置き、Clean Architectureで実行�
 flowchart LR
   UI[Obsidian UI] --> App[検索ユースケース / Port]
   App --> Domain[検索語・候補・一致範囲]
-  Remote[HTTPアダプター] -. implements .-> App
   Local[Worker / WASMアダプター] -. implements .-> App
   Root[Composition root] --> UI
-  Root --> Remote
   Root --> Local
 ```
 
-`src/main.ts` はObsidianのライフサイクルだけを接続する。`src/composition/` が具象アダプターを選ぶ。`src/presentation/` は検索窓、設定画面、ノートを開く操作、描画。HTTPやWASMを直接参照しない。
+`src/main.ts` はObsidianのライフサイクルだけを接続する。`src/composition/` が具象アダプターを選ぶ。`src/presentation/` は検索窓、設定画面、ノートを開く操作、描画。WASMを直接参照しない。
 
 `src/domain/search.ts` は検索値、検索語検証、一致範囲の検証・マージ。Obsidian、HTTP、タイマー、Workerに依存しない。
 
@@ -55,18 +52,36 @@ WASM版は自前でポータブル索引を構築し、pair/trioビット集合�
 
 再起動時もモデルと辞書のメモリ展開は必要。索引の復元によって構築を省略するのであり、すべての初期化を永久に省略できるわけではない。IndexedDBが利用できない・容量不足・破損した場合は再構築する。
 
-## ネイティブ検索サービス
+## ネイティブ参照実装
 
-`server/service.py` はCLIとcomposition rootで、従来の起動コマンドと公開importを維持する。
-
-`search_domain.py` は入力値・検索エラー・状態。`search_application.py` は検索・コーパス選択・準備のユースケースとエンジンPort。いずれもFastAPIに依存しない。
-
-`http_api.py` は認証、HTTP検証、エラーのHTTPステータス変換、レスポンス化、起動時の呼び出しを担当する。`infrastructure/vault_repository.py` が読み取り専用のvault走査と不変索引の構築・公開、`native_engine.py` がモデルの常駐・検索を担当する。FastAPIを使わず直接テストできる。
+`server/` は性能比較・開発用のPython/Rust参照実装として残す。公開版プラグインには接続機能を含めず、サーバーのURL・トークン・コーパス設定も持たない。配布JavaScriptにHTTP検索アダプターは含まれない。
 
 ## 制約と検証
 
-既定の5万語モデルには未登録語がある。本文検索は1〜12トークン。ファイル名一致は未登録語でも返せる。候補・実行時間には上限がある。WASMは単一Workerで処理し、UIスレッドを占有しない。初回の全索引構築には時間がかかり、ノート全文の転送とモデル・辞書・索引のRAMは必要。非常に大きいvaultはネイティブサービスを選べる。
+既定の5万語モデルには未登録語がある。本文検索は1〜12トークン。ファイル名一致は未登録語でも返せる。候補・実行時間には上限がある。WASMは単一Workerで処理し、UIスレッドを占有しない。初回の全索引構築には時間がかかり、ノート全文の転送とモデル・辞書・索引のRAMは必要。大きいvaultでは片言語・モデルなしの設定で必要メモリを抑えられる。
 
 TypeScriptの依存方向、キュー・再試行の寿命、既存UI、実WASMと日本語モデル、チェックポイント復元・更新・削除、ネイティブの実Rust検索をテストする。Node WorkerとIndexedDB代替実装による結合試験であり、iOS/Android実機やObsidian WebViewでの動作・メモリ上限の確認は別途必要。
 
 macOSのObsidian 1.15.0でプラグインを再読み込みし、実WASMの「今日の」検索が50件返ること、本文の小さいフォント・高さ制限の解除・一致部分のハイライトを画面で確認済み。iOS/Android実機は未検証。
+
+
+## 日英・UI言語・表示の境界（0.2.1）
+
+検索設定は `searchLanguages`（ja/enの有効リスト）、UI設定は `uiLanguage`（auto/ja/en）。空の有効リストでは意味検索を使わず文字列一致のみを返す。無効なモデル・日本語辞書はホスト側でも読み込まずWorkerに渡さない。
+
+Workerは言語別のモデル・索引を持ち、日本語文字を含むクエリは日本語、それ以外は英語へ振り分ける。異なる言語のベクトル空間を直接比較しない。文字列一致はモデルに依存せず、混在ノート・大文字小文字・未登録語を扱う。更新時は有効モデルすべての索引が完成してから世代を交換する。
+
+表示文言はpresentation/i18nに置く。Obsidianの言語の読み取りはcomposition root側で行い、applicationの準備状態へ文言を注入する。Workerは結果の種別・理由コードを返し、表示側で日英へ変換する。言語のUI切替はモデルの寿命に影響しない。
+
+presentation/excerptが表示時だけ空行を省き、元のUTF-16範囲を各表示行へ射影する。原文と検索エンジンの範囲を改変しないため、日英・絵文字・CRLFを含む抜粋でも行移動とハイライトの対応を保つ。
+
+0.2.1はmacOSのObsidian 1.15.0で英語の本文検索・日英UI切替・意味検索のopt-out設定表示を確認済み。UIの自動設定を維持。日英両モデルの908ノートのローカル計測は `tests/performance-bilingual.json`（初回構築96.1秒、16シャード復元650ms、検索28〜163ms）。
+
+
+## 公開版の導入・配布境界（0.3.0）
+
+標準の3ファイル導入ではモデルを要求しない。モデルのmanifestがなければWorkerはモデルなしで起動し、文字列一致を返す。要求された意味検索モデルが未導入なら、結果にunavailableという理由を付けてUIで案内する。
+
+モデルパックは利用者が選ぶデータZIP。ModelPackInstallerは既知の名前・展開サイズ・SHA-256・言語別の完全なファイル集合を確認し、成功したデータのみプラグイン自身のassetsディレクトリへ書く。コードや外部パスは受け付けない。全検証後に保存し、manifestは最後に公開する。取り込み後はモデルの寿命を更新し、既存の内容ハッシュが合う索引を再利用する。
+
+本体のnpm buildはソース同梱のWASM成果物を使用し、ネットワークやRustの追加取得を必要としない。Rustからの再生成はbuild:wasmで明示的に行い、CIの別ジョブでも試験する。main.jsは生成物としてGitから除外し、GitHub Releasesにのみ添付する。

@@ -8,7 +8,7 @@ function sources(dir) {
     .flatMap((e) =>
       e.isDirectory()
         ? sources(path.join(dir, e.name))
-        : [path.join(dir, e.name)],
+        : [path.join(dir, e.name).replaceAll(path.sep, "/")],
     )
     .filter((f) => f.endsWith(".ts"));
 }
@@ -25,7 +25,9 @@ test("domain and use cases depend only inward", () => {
         specifier.startsWith("."),
         `${file} imports platform package ${specifier}`,
       );
-      const target = path.normalize(path.join(path.dirname(file), specifier));
+      const target = path
+        .normalize(path.join(path.dirname(file), specifier))
+        .replaceAll(path.sep, "/");
       assert.ok(
         target.startsWith("src/domain/") ||
           (file.startsWith("src/application/") &&

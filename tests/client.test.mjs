@@ -31,10 +31,32 @@ function fixture() {
     }
     dispatchEvent() {}
   }
-  let modal, request, layoutReady;
+  let modal, request, layoutReady, worker;
+  class FakeWorker {
+    requests = [];
+    constructor() {
+      worker = this;
+    }
+    postMessage(message) {
+      this.requests.push(message);
+      if (message.type === "search")
+        request = { body: JSON.stringify(message.payload) };
+      queueMicrotask(() =>
+        this.onmessage?.({
+          data: {
+            id: message.id,
+            value:
+              message.type === "search" ? { results: [], mode: "wasm" } : true,
+          },
+        }),
+      );
+    }
+    terminate() {}
+  }
+
   class Plugin {
     async loadData() {
-      return { engine: "remote" };
+      return {};
     }
     addCommand(c) {
       this.command = c;
@@ -62,10 +84,7 @@ function fixture() {
     Setting: class {},
     TFile: class {},
     Notice: class {},
-    requestUrl: async (r) => {
-      request = r;
-      return { status: 200, json: { results: [] } };
-    },
+    normalizePath: (path) => path,
   };
   const exports = {};
   const context = {
@@ -77,15 +96,29 @@ function fixture() {
     },
     setTimeout,
     clearTimeout,
-    window: { setInterval: () => 0 },
+    window: { setTimeout, clearTimeout, setInterval: () => 0 },
     URL,
     Event,
+    Blob,
+    Worker: FakeWorker,
+    queueMicrotask,
   };
   vm.runInNewContext(fs.readFileSync("main.js", "utf8"), context);
   const P = context.module.exports.default;
   const p = new P();
   p.manifest = { id: "softmatcha-search" };
   p.app = {
+    vault: {
+      configDir: ".obsidian",
+      getName: () => "test",
+      getMarkdownFiles: () => [],
+      adapter: {
+        exists: async () => false,
+        read: async () => {
+          throw Error("File not found");
+        },
+      },
+    },
     workspace: {
       onLayoutReady: (callback) => {
         layoutReady = callback;
@@ -96,6 +129,9 @@ function fixture() {
     p,
     Element,
     startup: () => layoutReady(),
+    get worker() {
+      return worker;
+    },
     get modal() {
       return modal;
     },
@@ -108,7 +144,7 @@ test("command, debounce, IME, close cancellation", async () => {
   const f = fixture();
   await f.p.onload();
   assert.equal(f.p.command.id, "search");
-  assert.equal(f.p.command.hotkeys[0].key, "O");
+  assert.equal(f.p.command.hotkeys, undefined);
   f.p.command.callback();
   const m = f.modal;
   const first = m.getSuggestions("古い検索");
@@ -122,13 +158,6 @@ test("command, debounce, IME, close cancellation", async () => {
   const pending = m.getSuggestions("終了前");
   m.onClose();
   assert.equal((await pending).length, 0);
-});
-test("remote plaintext rejected before sending queries", async () => {
-  const f = fixture();
-  await f.p.onload();
-  f.p.config.endpoint = "http://example.com";
-  await assert.rejects(f.p.query("private"), /HTTPS/);
-  assert.equal(f.request, undefined);
 });
 
 test("only the actual matching substring gets an inline background", async () => {
@@ -161,14 +190,43 @@ test("only the actual matching substring gets an inline background", async () =>
   );
 });
 
-test("warmup starts at application layout readiness without opening a search window", async () => {
+test("local preparation starts at application layout readiness without opening a search window", async () => {
   const f = fixture();
   await f.p.onload();
-  f.p.config.token = "test-token";
   assert.equal(f.request, undefined);
   f.startup();
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(new URL(f.request.url).pathname, "/v1/warmup");
+  assert.equal(f.worker.requests[0].type, "init");
+  assert.equal(f.worker.requests[0].payload.models.length, 0);
   assert.equal(f.modal, undefined);
   f.p.onunload();
+});
+
+test("blank excerpt lines are omitted without shifting Unicode highlights or source line numbers", async () => {
+  const f = fixture();
+  await f.p.onload();
+  f.p.command.callback();
+  const root = new f.Element();
+  const text = "\r\n前文\r\n  \t\r\n\r\n😀金メダル\n\n後文\n";
+  const start = text.indexOf("金");
+  f.modal.renderSuggestion(
+    {
+      path: "研究.md",
+      line: 34,
+      score: 1,
+      excerpt: text,
+      match_ranges: [[start, start + 4]],
+    },
+    root,
+  );
+  const excerpt = root.children.find((x) => x.cls === "softmatcha-excerpt");
+  assert.equal(
+    excerpt.children.map((x) => x.text).join(""),
+    "前文\n😀金メダル\n後文",
+  );
+  assert.equal(excerpt.children.find((x) => x.tag === "mark").text, "金メダル");
+  assert.match(
+    root.children.find((x) => x.cls === "softmatcha-meta").text,
+    /35/,
+  );
 });

@@ -1,0 +1,54 @@
+name: Prepare draft release
+on:
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example 0.3.0 (no v prefix)
+        required: true
+        type: string
+      include_models:
+        description: Prepare language-specific data-only model packs
+        default: true
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Prepare public model data
+        if: github.event_name == 'push' || inputs.include_models
+        run: |
+          python3 -m venv .release-venv
+          .release-venv/bin/pip install numpy==2.2.6
+          .release-venv/bin/python scripts/prepare-models.py
+          .release-venv/bin/python scripts/export-assets.py
+      - name: Test with actual models and package
+        if: github.event_name == 'push' || inputs.include_models
+        run: |
+          npm test
+          python3 scripts/package.py --models
+      - name: Package plugin only
+        if: github.event_name == 'workflow_dispatch' && !inputs.include_models
+        run: python3 scripts/package.py
+      - name: Create draft for maintainer review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes-file docs/RELEASE_NOTES.md dist/main.js dist/manifest.json dist/styles.css dist/*.zip dist/SHA256SUMS

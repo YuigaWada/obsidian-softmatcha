@@ -61,7 +61,14 @@ export function japaneseTokenizer(files: Record<string, ArrayBuffer>) {
         cursor = start + surface.length;
         if (!surface.trim()) return [];
         return [
-          { id: vocabulary[surface] ?? unknown, start: first, end: bytes },
+          {
+            id:
+              typeof vocabulary[surface] === "number"
+                ? vocabulary[surface]
+                : unknown,
+            start: first,
+            end: bytes,
+          },
         ];
       });
   };

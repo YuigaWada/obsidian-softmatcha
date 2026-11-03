@@ -7,16 +7,26 @@ import {
   TFile,
   Notice,
 } from "obsidian";
-import type { SearchConfig, Hit, SearchResult } from "../domain/search";
+import type {
+  SearchConfig,
+  Hit,
+  SearchResult,
+  UiLocale,
+} from "../domain/search";
 import { highlightRanges } from "../domain/search";
+import { messages, errorText, resultCount } from "./i18n";
+import { compactExcerpt } from "./excerpt";
 export interface SearchHost extends Plugin {
   config: SearchConfig;
   readonly warmState: string;
+  readonly locale: UiLocale;
+  readonly labels: ReturnType<typeof messages>;
   save(): Promise<void>;
+  importModels(data: ArrayBuffer): Promise<void>;
   query(query: string, isCurrent?: () => boolean): Promise<SearchResult>;
 }
 export class Search extends SuggestModal<Hit> {
-  timer: ReturnType<typeof setTimeout> | undefined;
+  timer: number | undefined;
   generation = 0;
   pending: ((x: Hit[]) => void) | undefined;
   status: HTMLElement;
@@ -27,12 +37,12 @@ export class Search extends SuggestModal<Hit> {
     private plugin: SearchHost,
   ) {
     super(app);
-    this.setPlaceholder("SoftMatcha 2で検索…");
+    this.setPlaceholder(plugin.labels.placeholder);
     this.setInstructions([
-      { command: "↑↓", purpose: "選択" },
-      { command: "Enter", purpose: "開く" },
-      { command: "⌘/Ctrl+Enter", purpose: "新しいタブ" },
-      { command: "Alt+Enter", purpose: "リンク挿入" },
+      { command: "↑↓", purpose: plugin.labels.select },
+      { command: "Enter", purpose: plugin.labels.open },
+      { command: "⌘/Ctrl+Enter", purpose: plugin.labels.newTab },
+      { command: "Alt+Enter", purpose: plugin.labels.insertLink },
     ]);
     this.status = this.modalEl.createDiv({
       cls: "softmatcha-status",
@@ -48,42 +58,47 @@ export class Search extends SuggestModal<Hit> {
   }
   getSuggestions(query: string): Promise<Hit[]> {
     const id = ++this.generation;
-    clearTimeout(this.timer);
+    window.clearTimeout(this.timer);
     this.pending?.([]);
     this.pending = undefined;
     if (!query.trim() || this.composing || this.closed)
       return Promise.resolve([]);
     return new Promise((resolve) => {
       this.pending = resolve;
-      this.timer = setTimeout(async () => {
-        if (id !== this.generation) {
-          resolve([]);
-          return;
-        }
+      this.timer = window.setTimeout(() => {
+        void (async () => {
+          if (id !== this.generation) {
+            resolve([]);
+            return;
+          }
 
-        if (id !== this.generation || this.closed) {
-          resolve([]);
-          return;
-        }
-        this.status.setText("検索中…");
-        try {
-          const r = await this.plugin.query(
-            query.trim(),
-            () => id === this.generation && !this.closed,
-          );
-          if (id === this.generation && !this.closed) {
-            this.status.setText(
-              r.message ?? `${r.results.length}件 · SoftMatcha 2`,
+          if (id !== this.generation || this.closed) {
+            resolve([]);
+            return;
+          }
+          this.status.setText(this.plugin.labels.searching);
+          try {
+            const r = await this.plugin.query(
+              query.trim(),
+              () => id === this.generation && !this.closed,
             );
-            resolve(r.results);
-          } else resolve([]);
-        } catch (e) {
-          if (id === this.generation && !this.closed)
-            this.status.setText(`${e instanceof Error ? e.message : e}`);
-          resolve([]);
-        } finally {
-          if (id === this.generation) this.pending = undefined;
-        }
+            if (id === this.generation && !this.closed) {
+              this.status.setText(
+                r.mode
+                  ? `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2${r.mode === "wasm" ? " WASM" : ""}${r.literalOnly ? ` · ${this.plugin.labels[r.literalOnly]}` : ""}`
+                  : (r.message ??
+                      `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2`),
+              );
+              resolve(r.results);
+            } else resolve([]);
+          } catch (e) {
+            if (id === this.generation && !this.closed)
+              this.status.setText(errorText(e, this.plugin.locale));
+            resolve([]);
+          } finally {
+            if (id === this.generation) this.pending = undefined;
+          }
+        })();
       }, 80);
     });
   }
@@ -93,10 +108,17 @@ export class Search extends SuggestModal<Hit> {
       text: hit.path.replace(/\.md$/, ""),
     });
     const excerpt = el.createDiv({ cls: "softmatcha-excerpt" });
-    renderHighlighted(excerpt, hit.excerpt, hit.match_ranges ?? []);
+    const display = compactExcerpt(
+      hit.kind === "title" ? this.plugin.labels.filename : hit.excerpt,
+      hit.match_ranges ?? [],
+    );
+    renderHighlighted(excerpt, display.text, display.ranges);
     el.createDiv({
       cls: "softmatcha-meta",
-      text: `${hit.line + 1}行目 · 類似度 ${hit.score.toFixed(3)}`,
+      text:
+        this.plugin.locale === "ja"
+          ? `${hit.line + 1}行目 · 類似度 ${hit.score.toFixed(3)}`
+          : `Line ${hit.line + 1} · Similarity ${hit.score.toFixed(3)}`,
     });
   }
   onChooseSuggestion(hit: Hit, event: MouseEvent | KeyboardEvent) {
@@ -105,9 +127,7 @@ export class Search extends SuggestModal<Hit> {
   async openHit(hit: Hit, event: MouseEvent | KeyboardEvent) {
     const f = this.app.vault.getAbstractFileByPath(hit.path);
     if (!(f instanceof TFile)) {
-      new Notice(
-        "この端末にノートがありません。vaultの同期状態を確認してください。",
-      );
+      new Notice(this.plugin.labels.missingNote);
       return;
     }
     if (event.altKey) {
@@ -129,7 +149,7 @@ export class Search extends SuggestModal<Hit> {
   onClose() {
     this.closed = true;
     this.generation++;
-    clearTimeout(this.timer);
+    window.clearTimeout(this.timer);
     this.pending?.([]);
     this.pending = undefined;
   }
@@ -142,49 +162,104 @@ export class Settings extends PluginSettingTab {
     super(app, plugin);
   }
   display() {
-    this.containerEl.empty();
-    this.containerEl.createEl("p", {
-      text: "WASMは端末内で検索し、起動時にモデルと索引を準備します。初回準備には時間がかかります。検索サービスも選択できます。",
-    });
-    new Setting(this.containerEl).setName("検索エンジン").addDropdown((d) =>
+    this.renderSettings();
+  }
+  getSettingDefinitions() {
+    const labels = this.plugin.labels;
+    return [
+      {
+        name: labels.models,
+        desc: labels.info,
+        aliases: [
+          labels.uiLanguage,
+          labels.semanticJa,
+          labels.semanticEn,
+          labels.similarity,
+        ],
+        render: (setting: Setting) => {
+          setting.settingEl.addClass("softmatcha-settings");
+          this.renderSettings(setting.settingEl);
+        },
+      },
+    ];
+  }
+  private renderSettings(container = this.containerEl) {
+    container.empty();
+    const labels = this.plugin.labels;
+    container.createEl("p", { text: labels.info });
+    new Setting(container).setName(labels.uiLanguage).addDropdown((d) =>
       d
-        .addOption("wasm", "端末内のWASM")
-        .addOption("remote", "検索サービス")
-        .setValue(this.plugin.config.engine)
+        .addOption("auto", labels.automatic)
+        .addOption("ja", "日本語")
+        .addOption("en", "English")
+        .setValue(this.plugin.config.uiLanguage)
         .onChange(async (value) => {
-          this.plugin.config.engine = value as "remote" | "wasm";
+          this.plugin.config.uiLanguage = value as SearchConfig["uiLanguage"];
           await this.plugin.save();
+          this.renderSettings(container);
         }),
     );
-    for (const [key, name, desc] of [
-      [
-        "endpoint",
-        "検索サービスURL",
-        "Mac単体: http://127.0.0.1:8769。iOS: 到達可能なHTTPSアドレス。",
-      ],
-      [
-        "token",
-        "アクセストークン",
-        "サービスのSOFTMATCHA_TOKENと一致させます。端末のプラグイン設定に保存されます。",
-      ],
-      ["corpus", "コーパスID", "サーバー側で許可されたコーパス名。"],
-    ] as const) {
-      new Setting(this.containerEl)
-        .setName(name)
-        .setDesc(desc)
-        .addText((t) => {
-          t.setValue(this.plugin.config[key]).onChange(async (v) => {
-            this.plugin.config[key] = v;
-            await this.plugin.save();
-          });
-          if (key === "token") t.inputEl.type = "password";
+    const modelSetting = new Setting(container)
+      .setName(labels.models)
+      .setDesc(labels.importInfo);
+    modelSetting.descEl.createEl("a", {
+      text: ` ${labels.modelDownloads}`,
+      href: "https://github.com/YuigaWada/SoftMatcha-for-Obsidian/releases",
+    });
+    modelSetting.addButton((button) =>
+      button.setButtonText(labels.importPack).onClick(() => {
+        const input = container.createEl("input", {
+          type: "file",
+          cls: "softmatcha-file-input",
+          attr: { accept: ".zip" },
         });
+        input.addEventListener(
+          "change",
+          () => {
+            void (async () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              button.setDisabled(true).setButtonText(labels.importing);
+              try {
+                await this.plugin.importModels(await file.arrayBuffer());
+                new Notice(labels.imported);
+              } catch (error) {
+                new Notice(errorText(error, this.plugin.locale));
+              } finally {
+                input.remove();
+                button.setDisabled(false).setButtonText(labels.importPack);
+              }
+            })();
+          },
+          { once: true },
+        );
+        input.click();
+      }),
+    );
+    for (const [language, label] of [
+      ["ja", labels.semanticJa],
+      ["en", labels.semanticEn],
+    ] as const) {
+      new Setting(container)
+        .setName(label)
+        .setDesc(labels.semanticDesc)
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.config.searchLanguages.includes(language))
+            .onChange(async (enabled) => {
+              this.plugin.config.searchLanguages =
+                this.plugin.config.searchLanguages.filter(
+                  (l) => l !== language,
+                );
+              if (enabled) this.plugin.config.searchLanguages.push(language);
+              await this.plugin.save();
+            }),
+        );
     }
-    new Setting(this.containerEl).setName("類似度の下限").addSlider((s) =>
+    new Setting(container).setName(labels.similarity).addSlider((s) =>
       s
         .setLimits(0.1, 1, 0.05)
         .setValue(this.plugin.config.similarity)
-        .setDynamicTooltip()
         .onChange(async (v) => {
           this.plugin.config.similarity = v;
           await this.plugin.save();

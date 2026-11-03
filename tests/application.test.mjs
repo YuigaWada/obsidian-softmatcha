@@ -13,9 +13,7 @@ const { SearchSession } = await import(
     Buffer.from(outputFiles[0].text).toString("base64")
 );
 const config = {
-  token: "test",
-  endpoint: "",
-  corpus: "default",
+  searchLanguages: ["ja"],
   similarity: 0.5,
   limit: 50,
 };
@@ -68,7 +66,7 @@ test("late warmup results and retry timers are invalidated on reconfiguration an
     },
   );
   session.prepare(config);
-  session.prepare({ ...config, corpus: "new" });
+  session.prepare({ ...config, searchLanguages: ["en"] });
   resolvers[0](true);
   await tick();
   assert.equal(session.state, "準備中…");

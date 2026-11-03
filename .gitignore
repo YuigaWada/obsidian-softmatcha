@@ -10,3 +10,9 @@ rust/target/
 rust/pkg/
 dist/
 assets/
+
+main.js
+main.js.map
+coverage/
+.DS_Store
+.release-venv/

@@ -4,9 +4,15 @@ import {
   type SearchResult,
 } from "../domain/search";
 import type { SearchEngine, Scheduler } from "./ports";
+export interface SessionLabels {
+  preparing: string;
+  ready: string;
+  indexing: string;
+  error: (error: unknown) => string;
+}
 /** Application lifetime aggregate coordinator. Views never own models or warmup. */
 export class SearchSession {
-  state = "準備中…";
+  state: string;
   private stopped = false;
   private version = 0;
   private cancel: (() => void) | undefined;
@@ -14,7 +20,24 @@ export class SearchSession {
   constructor(
     private engine: SearchEngine,
     private scheduler: Scheduler,
-  ) {}
+    private labels: SessionLabels = {
+      preparing: "準備中…",
+      ready: "検索準備完了",
+      indexing: "モデル・索引を準備中…",
+      error: (error: unknown) =>
+        `準備エラー: ${error instanceof Error ? error.message : String(error)}`,
+    },
+  ) {
+    this.state = labels.preparing;
+  }
+  setLabels(labels: SessionLabels): void {
+    for (const key of ["preparing", "ready", "indexing"] as const)
+      if (this.state === this.labels[key]) {
+        this.state = labels[key];
+        break;
+      }
+    this.labels = labels;
+  }
   prepare(config: Readonly<SearchConfig>): void {
     this.cancel?.();
     const version = ++this.version;
@@ -24,11 +47,11 @@ export class SearchSession {
       try {
         const ready = await this.engine.prepare(snapshot);
         if (this.stopped || version !== this.version) return;
-        this.state = ready ? "検索準備完了" : "モデル・索引を準備中…";
+        this.state = ready ? this.labels.ready : this.labels.indexing;
         if (ready) return;
       } catch (error) {
         if (this.stopped || version !== this.version) return;
-        this.state = `準備エラー: ${error instanceof Error ? error.message : String(error)}`;
+        this.state = this.labels.error(error);
       }
       if (attempt < 60)
         this.cancel = this.scheduler.after(2000, () => void run(attempt + 1));

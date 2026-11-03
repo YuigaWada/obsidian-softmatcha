@@ -6,19 +6,28 @@ export class IndexCache {
       const r = indexedDB.open(name, 1);
       r.onupgradeneeded = () => r.result.createObjectStore("shards");
       r.onsuccess = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
+      r.onerror = () =>
+        reject(new Error(r.error?.message ?? "IndexedDB request failed"));
     });
     this.db.catch(() => {});
   }
   async get(key: string): Promise<Uint8Array | undefined> {
     try {
       const db = await this.db;
-      return await new Promise((resolve, reject) => {
+      return await new Promise<unknown>((resolve, reject) => {
         const r = db.transaction("shards").objectStore("shards").get(key);
         r.onsuccess = () => resolve(r.result);
-        r.onerror = () => reject(r.error);
-      }).then(async (record: any) => {
-        if (!record?.bytes || record.hash !== (await checksum(record.bytes)))
+        r.onerror = () =>
+          reject(new Error(r.error?.message ?? "IndexedDB request failed"));
+      }).then(async (record) => {
+        if (
+          !record ||
+          typeof record !== "object" ||
+          !("bytes" in record) ||
+          !(record.bytes instanceof Uint8Array) ||
+          !("hash" in record) ||
+          record.hash !== (await checksum(record.bytes))
+        )
           return undefined;
         return record.bytes;
       });
@@ -34,7 +43,8 @@ export class IndexCache {
         const t = db.transaction("shards", "readwrite");
         t.objectStore("shards").put(record, key);
         t.oncomplete = () => resolve();
-        t.onerror = () => reject(t.error);
+        t.onerror = t.onabort = () =>
+          reject(new Error(t.error?.message ?? "IndexedDB transaction failed"));
       });
     } catch {
       /* Cache failure must not prevent searching. */
@@ -50,11 +60,13 @@ export class IndexCache {
         r.onsuccess = () => {
           const cursor = r.result;
           if (!cursor) return;
-          if (!keys.includes(String(cursor.key))) store.delete(cursor.key);
+          if (typeof cursor.key !== "string" || !keys.includes(cursor.key))
+            store.delete(cursor.key);
           cursor.continue();
         };
         t.oncomplete = () => resolve();
-        t.onerror = () => reject(t.error);
+        t.onerror = t.onabort = () =>
+          reject(new Error(t.error?.message ?? "IndexedDB transaction failed"));
       });
     } catch {
       /* Optional cache. */

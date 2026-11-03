@@ -1,9 +1,10 @@
 {
   "id": "softmatcha-search",
-  "name": "SoftMatcha-for-Obsidian",
-  "version": "0.2.0",
+  "name": "SoftMatcha Search",
+  "version": "0.3.0",
   "minAppVersion": "1.8.7",
-  "description": "Search vault passages locally with SoftMatcha 2 WASM or a private search service.",
-  "author": "Yui Gawada",
-  "isDesktopOnly": false
+  "description": "Find English and Japanese Markdown passages with local semantic search and highlighted matches.",
+  "author": "Yuiga Wada",
+  "isDesktopOnly": false,
+  "authorUrl": "https://github.com/YuigaWada"
 }

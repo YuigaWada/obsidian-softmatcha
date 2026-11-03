@@ -1,23 +1,4 @@
-import { existsSync, statSync, readdirSync } from "node:fs";
-import { spawnSync } from "node:child_process";
-function newest(dir) {
-  return Math.max(
-    ...readdirSync(dir, { withFileTypes: true }).map((e) =>
-      e.isDirectory()
-        ? newest(`${dir}/${e.name}`)
-        : statSync(`${dir}/${e.name}`).mtimeMs,
-    ),
-  );
-}
-const artifact = "rust/pkg/softmatcha_wasm_bg.wasm";
-if (
-  !existsSync(artifact) ||
-  newest("rust/core/src") > statSync(artifact).mtimeMs ||
-  newest("rust/wasm/src") > statSync(artifact).mtimeMs
-) {
-  const r = spawnSync("bash", ["scripts/build-wasm.sh"], { stdio: "inherit" });
-  if (r.status !== 0) process.exit(r.status ?? 1);
-}
+import { readFileSync, readdirSync } from "node:fs";
 import { build } from "esbuild";
 const worker = await build({
   entryPoints: ["src/infrastructure/worker/search-worker.ts"],
@@ -37,6 +18,24 @@ await build({
   platform: "browser",
   target: "es2020",
   outfile: "main.js",
+  banner: {
+    js:
+      "/*\n" +
+      readFileSync("THIRD_PARTY_NOTICES.md", "utf8").replaceAll("*/", "* /") +
+      "\n" +
+      readdirSync("licenses")
+        .filter((n) => !n.endsWith(".json"))
+        .sort()
+        .map(
+          (n) =>
+            "\n--- " +
+            n +
+            " ---\n" +
+            readFileSync("licenses/" + n, "utf8").replaceAll("*/", "* /"),
+        )
+        .join("\n") +
+      "\n*/",
+  },
   plugins: [
     {
       name: "worker-source",

@@ -42,15 +42,12 @@ const binary = (file) => {
 };
 const manifest = JSON.parse(fs.readFileSync("assets/manifest.json", "utf8"));
 const payload = {
-  vectors: binary("assets/vectors.f32"),
-  dimensions: manifest.dimensions,
-  vocabulary: fs.readFileSync("assets/vocab.json", "utf8"),
-  dictionaries: Object.fromEntries(
-    manifest.dictionaries.map((n) => [n, binary(`assets/dict/${n}.dat.gz`)]),
-  ),
-  version: manifest.version,
-  vault: "benchmark",
+ models:Object.entries(manifest.models??{ja:manifest}).map(([language,spec])=>{
+  const prefix=spec.path?`assets/${spec.path}/`:'assets/';return {...spec,language,vectors:binary(prefix+'vectors.f32'),vocabulary:fs.readFileSync(prefix+'vocab.json','utf8')};
+ }),
+ dictionaries:Object.fromEntries(manifest.dictionaries.map(n=>[n,binary(`assets/dict/${n}.dat.gz`)])),vault:'benchmark'
 };
+
 function notes(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     if (e.name.startsWith(".") || e.isSymbolicLink()) return [];
@@ -80,11 +77,11 @@ try {
       index_build_ms: Math.round(performance.now() - start),
     }),
   );
-  for (const query of ["検索", "機械学習", "人工知能"]) {
+  for (const query of ["検索", "機械学習", "artificial intelligence", "machine learning"]) {
     start = performance.now();
     const r = await call("search", {
       query,
-      config: { similarity: 0.45, limit: 50 },
+      config: { similarity: 0.45, limit: 50,searchLanguages:["ja","en"] },
     });
     console.log(
       JSON.stringify({

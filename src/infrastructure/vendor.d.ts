@@ -1,26 +1,27 @@
 declare module "kuromoji/src/dict/DynamicDictionaries" {
-  const Constructor: any;
-  export default Constructor;
+  export default class DynamicDictionaries {
+    loadTrie(base: Int32Array, check: Int32Array): void;
+    loadTokenInfoDictionaries(
+      tid: Uint8Array,
+      pos: Uint8Array,
+      map: Uint8Array,
+    ): void;
+    loadConnectionCosts(costs: Int16Array): void;
+    loadUnknownDictionaries(
+      unk: Uint8Array,
+      pos: Uint8Array,
+      map: Uint8Array,
+      chars: Uint8Array,
+      compat: Uint32Array,
+      invoke: Uint8Array,
+    ): void;
+  }
 }
 declare module "kuromoji/src/Tokenizer" {
-  const Constructor: any;
-  export default Constructor;
-}
-declare module "*softmatcha_wasm.js" {
-  export default function init(input: unknown): Promise<unknown>;
-  export class SearchEngine {
-    constructor(vectors: Float32Array, dimensions: number);
-    replace_shard(id: string, documents: string): void;
-    restore_shard(id: string, bytes: Uint8Array): void;
-    export_shard(id: string): Uint8Array;
-    remove_shard(id: string): void;
-    search(
-      query: Uint32Array,
-      minimum: number,
-      limit: number,
-      budget: number,
-    ): string;
-    free(): void;
+  import type DynamicDictionaries from "kuromoji/src/dict/DynamicDictionaries";
+  export default class Tokenizer {
+    constructor(dictionary: DynamicDictionaries);
+    tokenize(text: string): { surface_form: string }[];
   }
 }
 declare module "*.wasm" {

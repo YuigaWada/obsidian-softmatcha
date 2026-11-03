@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a problem with search, setup, or display.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected behavior and reproduction steps.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Obsidian / plugin / OS versions
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Search setup
+      options:
+        - Exact search only
+        - Japanese model
+        - English model
+        - Both models
+        - Remote service
+  - type: textarea
+    id: example
+    attributes:
+      label: Minimal example
+      description: Use invented text. Do not paste tokens, personal notes, model files, or complete index data.

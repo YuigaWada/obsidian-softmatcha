@@ -29,3 +29,7 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+.softmatcha-file-input { display: none; }
+
+.softmatcha-settings { display: block; width: 100%; border: 0; padding: 0; }

@@ -51,6 +51,7 @@ const dictionaries = Object.fromEntries(
     }),
 );
 const config = { similarity: 0.7, limit: 50 };
+const hasModelAssets = fs.existsSync("assets/manifest.json");
 test(
   "real WASM Worker soft matches, highlights UTF-16, preserves generations and restores cached indices",
   { timeout: 60000 },
@@ -94,10 +95,9 @@ test(
       await w.call("sync", [{ path: "renamed.md", text: "gold medalist" }]);
       r = await w.call("search", { query: "gold winner", config });
       assert.ok(r.results.every((h) => h.path === "renamed.md"));
-      await assert.rejects(
-        w.call("search", { query: "missingword", config }),
-        /語彙/,
-      );
+      const missing = await w.call("search", { query: "missingword", config });
+      assert.deepEqual(missing.results, []);
+      assert.equal(missing.literalOnly, "unknown");
       r = await w.call("search", { query: "renamed", config });
       assert.equal(r.results[0].path, "renamed.md");
       await w.call("sync", []);
@@ -110,7 +110,7 @@ test(
 );
 test(
   "actual Japanese model and IPADIC tokenize/search/highlight without Python",
-  { timeout: 60000 },
+  { timeout: 60000, skip: !hasModelAssets },
   async () => {
     const w = harness();
     try {
@@ -141,6 +141,168 @@ test(
       assert.equal(hit.path, "競技.md");
       assert.equal(hit.line, 1);
       assert.equal(hit.excerpt.slice(...hit.match_ranges[0]), "金メダル");
+    } finally {
+      await w.close();
+    }
+  },
+);
+
+test(
+  "English/Japanese models, case-insensitive exact matches, mixed notes and complete opt-out",
+  { timeout: 60000, skip: !hasModelAssets },
+  async () => {
+    const w = harness();
+    try {
+      const metadata = JSON.parse(
+        fs.readFileSync("assets/manifest.json", "utf8"),
+      );
+      const models = ["ja", "en"].map((language) => {
+        const spec = metadata.models[language];
+        const prefix = spec.path ? `assets/${spec.path}/` : "assets/";
+        const b = fs.readFileSync(prefix + "vectors.f32");
+        return {
+          ...spec,
+          language,
+          vectors: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength),
+          vocabulary: fs.readFileSync(prefix + "vocab.json", "utf8"),
+        };
+      });
+      const init = { models, dictionaries, vault: "bilingual-fixture" };
+      await w.call("init", init);
+      const documents = [
+        {
+          path: "english.md",
+          text: "😀\nA car is parked here.\nMACHINE learning and neural networks.",
+        },
+        { path: "日本語.md", text: "機械学習の研究と金メダル。" },
+        {
+          path: "mixed.md",
+          text: "機械学習と machine learning を研究する。\nUniqueSoftMatchaWord",
+        },
+      ];
+      await w.call("sync", documents);
+      const config = {
+        similarity: 0.4,
+        limit: 50,
+        searchLanguages: ["ja", "en"],
+      };
+      let result = await w.call("search", { query: "automobile", config });
+      assert.ok(
+        result.results.some(
+          (h) =>
+            h.path === "english.md" &&
+            h.excerpt.slice(...h.match_ranges[0]).toLowerCase() === "car",
+        ),
+      );
+      result = await w.call("search", { query: "machine learning", config });
+      assert.ok(
+        result.results.some(
+          (h) =>
+            h.path === "english.md" &&
+            h.excerpt.slice(...h.match_ranges[0]) === "MACHINE learning",
+        ),
+      );
+      result = await w.call("search", { query: "金メダル", config });
+      assert.ok(result.results.some((h) => h.path === "日本語.md"));
+      result = await w.call("search", {
+        query: "uniquesoftmatchaword",
+        config,
+      });
+      assert.ok(result.results.some((h) => h.path === "mixed.md"));
+      assert.equal(result.literalOnly, "unknown");
+      await w.call("init", {
+        models: [],
+        dictionaries: {},
+        vault: "bilingual-fixture",
+      });
+      const sync = await w.call("sync", documents);
+      assert.equal(sync.rebuilt, 0);
+      result = await w.call("search", {
+        query: "automobile",
+        config: { ...config, searchLanguages: [] },
+      });
+      assert.deepEqual(result.results, []);
+      assert.equal(result.literalOnly, "disabled");
+      result = await w.call("search", {
+        query: "MACHINE learning",
+        config: { ...config, searchLanguages: [] },
+      });
+      assert.ok(result.results.some((h) => h.path === "english.md"));
+      result = await w.call("search", {
+        query: "機械学習",
+        config: { ...config, searchLanguages: [] },
+      });
+      assert.ok(result.results.some((h) => h.path === "日本語.md"));
+    } finally {
+      await w.close();
+    }
+  },
+);
+
+test(
+  "standard installation needs no model/dictionary and English tokenization has no prototype-key crashes",
+  { timeout: 60000 },
+  async () => {
+    const w = harness();
+    try {
+      const documents = [
+        {
+          path: "note.md",
+          text: "Hello WORLD\n日本語の検索\ntoString constructor",
+        },
+      ];
+      await w.call("init", {
+        models: [],
+        dictionaries: {},
+        vault: "fresh-worker",
+      });
+      await w.call("sync", documents);
+      let result = await w.call("search", {
+        query: "hello world",
+        config: { ...config, searchLanguages: ["ja", "en"] },
+      });
+      assert.equal(
+        result.results[0].excerpt.slice(...result.results[0].match_ranges[0]),
+        "Hello WORLD",
+      );
+      result = await w.call("search", {
+        query: "日本語",
+        config: { ...config, searchLanguages: ["ja", "en"] },
+      });
+      assert.equal(result.results[0].line, 1);
+      await w.call("init", {
+        models: [
+          {
+            language: "en",
+            vectors: new Float32Array([1, 0, 0, 1, 0, 1, -1, 0, 0, 0]).buffer,
+            dimensions: 2,
+            vocabulary: JSON.stringify({
+              gold: 0,
+              winner: 1,
+              medalist: 2,
+              silver: 3,
+            }),
+            version: "synthetic-english-v1",
+          },
+        ],
+        dictionaries: {},
+        vault: "english-worker",
+      });
+      await w.call("sync", [
+        ...documents,
+        { path: "award.md", text: "GOLD medalist" },
+      ]);
+      result = await w.call("search", {
+        query: "gold winner",
+        config: { ...config, searchLanguages: ["en"] },
+      });
+      assert.ok(
+        result.results.some(
+          (h) =>
+            h.path === "award.md" &&
+            h.excerpt.slice(...h.match_ranges[0]) === "GOLD medalist",
+        ),
+      );
     } finally {
       await w.close();
     }

@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-03",
+  "runtime": "Node.js v22.23.2 Worker + WASM + fake-indexeddb",
+  "models": "compact-ja and compact-en, 50000 words each",
+  "samples": [
+    {
+      "model_and_dictionary_ms": 820
+    },
+    {
+      "notes": 908,
+      "index_build_ms": 96106
+    },
+    {
+      "query": "検索",
+      "search_ms": 163,
+      "results": 50
+    },
+    {
+      "query": "機械学習",
+      "search_ms": 52,
+      "results": 50
+    },
+    {
+      "query": "artificial intelligence",
+      "search_ms": 30,
+      "results": 4
+    },
+    {
+      "query": "machine learning",
+      "search_ms": 28,
+      "results": 17
+    },
+    {
+      "restore_ms": 650,
+      "rebuilt": 0,
+      "restored": 16
+    }
+  ],
+  "limits": "Local sample; excludes Obsidian debounce, file reads and rendering. Not an iOS measurement."
+}
