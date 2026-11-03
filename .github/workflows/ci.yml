@@ -26,9 +26,9 @@ jobs:
         with:
           name: plugin-${{ matrix.os }}
           path: |
-            main.js
-            manifest.json
-            styles.css
+            dist/main.js
+            dist/manifest.json
+            dist/styles.css
           if-no-files-found: error
   rust:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: rustup target add wasm32-unknown-unknown
-      - run: cargo test --locked --manifest-path rust/Cargo.toml -p softmatcha-core
+      - run: cargo test --locked --manifest-path Cargo.toml -p softmatcha-core
       - run: cargo install wasm-pack --version 0.15.0 --locked
       - run: npm run build:wasm
       - run: npm run build

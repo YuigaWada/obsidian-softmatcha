@@ -12,12 +12,12 @@ npm run package
 
 `npm run check` runs the official Obsidian ESLint rules, TypeScript/browser
 build, synthetic Worker tests, and release metadata validation. Real-model
-tests run only if `assets/manifest.json` exists. No test downloads a model.
-`main.js` is generated and excluded from source control; release attachments
+tests run only if `.local/assets/manifest.json` exists. No test downloads a model.
+`dist/main.js` is generated and excluded from source control; release attachments
 are the distribution mechanism.
 
-The ordinary build consumes the included `vendor/softmatcha-wasm/` artifact.
-Its complete source and locked Rust dependency graph are under `rust/`.
+The ordinary build consumes the included `resources/wasm/` artifact.
+Its complete source and locked Rust dependency graph are under `crates/` with a root Cargo workspace.
 Generated bindings and WASM are included so Obsidian's Node build verifier
 and contributors do not need to install another toolchain to build the plugin.
 The artifact contains no model data, corpus, credentials, or native OS library.
@@ -30,14 +30,14 @@ wasm-pack 0.15.0:
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack --version 0.15.0 --locked
-cargo test --locked --manifest-path rust/Cargo.toml -p softmatcha-core
+cargo test --locked --manifest-path Cargo.toml -p softmatcha-core
 npm run build:wasm
 npm run check
 ```
 
 The wrapper script uses the available linker; on the maintainer's Nix setup
 it can use `nix shell nixpkgs#lld`. `npm run build:wasm` updates the generated
-files in `vendor/softmatcha-wasm/`. Commit regenerated artifacts with changes
+files in `resources/wasm/`. Commit regenerated artifacts with changes
 to the Rust port and preserve the upstream Apache/MIT notices. The Rust CI job
 rebuilds from source and runs the Worker integration tests on that build.
 
@@ -48,15 +48,15 @@ This operation downloads public fastText text-vector streams and stops after
 needed; the native search service is not:
 
 ```sh
-python3 -m venv .release-venv
-.release-venv/bin/pip install numpy==2.2.6
-.release-venv/bin/python scripts/prepare-models.py
-.release-venv/bin/python scripts/export-assets.py
+python3 -m venv .local/venv
+.local/venv/bin/pip install numpy==2.2.6
+.local/venv/bin/python scripts/models/prepare.py
+.local/venv/bin/python scripts/models/export.py
 ```
 
-The source models are saved under ignored `server/state/models/`. The generated
-raw float32 vectors and dictionaries are under ignored `assets/`.
-The model catalog in `src/infrastructure/model-catalog.json` pins names, sizes,
+The source models are saved under ignored `.local/models/`. The generated
+raw float32 vectors and dictionaries are under ignored `.local/assets/`.
+The model catalog in `resources/model-catalog.json` pins names, sizes,
 and SHA-256 hashes. To intentionally change model data or model notices:
 
 ```sh
@@ -78,16 +78,16 @@ setup, model opt-out, model ZIP validation, and excerpt range mapping. CI's
 Node Worker tests are not Obsidian or mobile-device tests.
 
 For the optional Python service, see [SERVER.md](SERVER.md). With its venv
-installed, `server/.venv/bin/python -m pytest tests -q` tests that path.
+installed, `.local/venv/bin/python -m pytest tests/native -q` tests that path.
 
-`node scripts/benchmark-wasm.mjs /absolute/path/to/test-vault` prints only counts
+`node benchmarks/wasm.mjs /absolute/path/to/test-vault` prints only counts
 and timings. It reads the specified vault locally. Its fake IndexedDB is
 process-local and is not representative of all browser storage costs. Prefer
-a synthetic test vault when sharing results. Existing `tests/performance-*.json`
+a synthetic test vault when sharing results. Existing `benchmarks/results/*.json`
 records are anonymized local samples, not guarantees for other hardware.
 
 ## Local plugin refresh
 
-Copy the three plugin files into the test vault's plugin folder. Keep its
+Copy the three plugin files from `dist/` into the test vault's plugin folder. Keep its
 `data.json` private. Reload only this plugin after changes. Imported model data
 can be preserved because it is separate from the three code/update files.

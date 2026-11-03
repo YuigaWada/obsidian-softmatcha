@@ -2,7 +2,7 @@
 
 英語・日本語のMarkdownノートを検索します。モデルなしでファイル名と本文の文字列一致を検索でき、任意のモデルパックを追加するとSoftMatcha 2による意味検索も使えます。
 
-[English](README.md) · [開発](docs/DEVELOPMENT.md) · [公開手順](docs/RELEASING.md)
+[English](README.md) · [開発](docs/DEVELOPMENT.md) · [ディレクトリ構成](docs/DIRECTORY_STRUCTURE.md) · [公開手順](docs/RELEASING.md)
 
 ## 主な機能
 

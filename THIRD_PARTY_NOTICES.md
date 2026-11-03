@@ -7,7 +7,7 @@ installation preserves attribution.
 
 ## SoftMatcha search engine
 
-The portable search code in `rust/core/src/upstream/` and `helper.rs` derives from
+The portable search code in `crates/core/src/upstream/` and `helper.rs` derives from
 [SoftMatcha 2](https://github.com/softmatcha/softmatcha2), by Masataka Yoneda,
 commit `b37e104741465a31425db5f07202d8065af7d571`, under Apache-2.0, with earlier
 MIT-licensed portions attributed in `licenses/SoftMatcha1-MIT.txt`.
@@ -15,8 +15,8 @@ MIT-licensed portions attributed in `licenses/SoftMatcha1-MIT.txt`.
 Changes remove Python/NumPy and Unix file I/O, use ndarray and immutable byte
 buffers, replace Rayon with sequential execution, adapt clocks and integer
 widths for WebAssembly, and add small-vocabulary bounds checks. Portable index
-construction and the application adapters are documented in `ARCHITECTURE.md`.
-See `rust/NOTICE`, `licenses/SoftMatcha2-Apache-2.0.txt`, and the upstream source.
+construction and the application adapters are documented in `docs/ARCHITECTURE.md`.
+See `crates/core/NOTICE`, `licenses/SoftMatcha2-Apache-2.0.txt`, and the upstream source.
 This is an independent Obsidian integration, not an official SoftMatcha product.
 
 ## JavaScript and WebAssembly dependencies
@@ -30,8 +30,8 @@ This is an independent Obsidian integration, not an official SoftMatcha product.
   only includes modules reachable from the tokenizer and dictionary adapters.
 - Rust dependency versions and license identifiers are recorded in
   `licenses/rust-dependencies.json`; their license texts are supplied alongside
-  it. `vendor/softmatcha-wasm/` contains generated bindings and WASM built from
-  the included `rust/` source, not code downloaded or evaluated at runtime.
+  it. `resources/wasm/` contains generated bindings and WASM built from
+  the included `crates/` source, not code downloaded or evaluated at runtime.
 
 ## Optional model packs (data, distributed separately)
 

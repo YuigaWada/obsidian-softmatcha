@@ -7,16 +7,16 @@ and development. It is not part of plugin installation or runtime.
 ## Setup
 
 The upstream dependency uses Python/Rust and native tooling. See
-`server/setup.sh`; it checks out the pinned SoftMatcha 2 source and applies the
+`dev/native-reference/setup.sh`; it checks out the pinned SoftMatcha 2 source and applies the
 included compatibility patch. A Python 3.12 environment, Rust, C/C++ tooling,
 ICU/pkg-config, and `uv` are needed. Dependency support varies by OS/architecture.
-A Dockerfile is also provided with the server directory as the build context.
+A Dockerfile is also provided with the dev/native-reference directory as the build context.
 
 ```sh
-bash server/setup.sh
+bash dev/native-reference/setup.sh
 # Generate your own random token with at least 24 characters.
 export SOFTMATCHA_TOKEN='replace-with-your-random-token'
-bash server/run.sh --vault /absolute/path/to/vault --state /absolute/path/to/state --exclude tools
+bash dev/native-reference/run.sh --vault /absolute/path/to/vault --state /absolute/path/to/state --exclude tools
 ```
 
 The default backend uses the compact Japanese model. A full model and other

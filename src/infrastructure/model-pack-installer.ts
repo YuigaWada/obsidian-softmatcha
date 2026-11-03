@@ -1,5 +1,5 @@
 import { unzipSync } from "fflate";
-import bundledCatalog from "./model-catalog.json";
+import bundledCatalog from "../../resources/model-catalog.json";
 import { SearchFault, type SearchLanguage } from "../domain/search";
 export interface AssetStore {
   write(path: string, data: ArrayBuffer): Promise<void>;

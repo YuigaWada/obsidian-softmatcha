@@ -1,18 +1,16 @@
-node_modules/
-.venv/
-__pycache__/
-.pytest_cache/
-server/vendor/
-server/state/
-*.log
-local-backup/
-rust/target/
-rust/pkg/
-dist/
-assets/
+# Local dependencies, state, private backups, and generated model data
+/node_modules/
+/.local/
+/build/
+/dist/
 
-main.js
-main.js.map
+# Generated legacy outputs and generic caches
+/main.js
+/main.js.map
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
 coverage/
+*.log
 .DS_Store
-.release-venv/

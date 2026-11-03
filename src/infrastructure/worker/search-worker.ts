@@ -1,8 +1,8 @@
 import {
   initSync,
   SearchEngine,
-} from "../../../vendor/softmatcha-wasm/softmatcha_wasm.js";
-import bytes from "../../../vendor/softmatcha-wasm/softmatcha_wasm_bg.wasm";
+} from "../../../resources/wasm/softmatcha_wasm.js";
+import bytes from "../../../resources/wasm/softmatcha_wasm_bg.wasm";
 import { japaneseTokenizer } from "./tokenizer";
 import { englishTokenizer } from "./english-tokenizer";
 import { literalSearch, type Note } from "./literal-search";
