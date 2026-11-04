@@ -31,3 +31,31 @@
 .softmatcha-file-input { display: none; }
 
 .softmatcha-settings { display: block; width: 100%; border: 0; padding: 0; }
+
+/* Keep result density comfortable above the iOS keyboard. */
+.softmatcha-ios {
+  -webkit-text-size-adjust: 100%;
+}
+.softmatcha-ios .suggestion-item {
+  padding: 8px 12px;
+}
+.softmatcha-ios .softmatcha-title {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.softmatcha-ios .softmatcha-excerpt {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+}
+.softmatcha-ios .softmatcha-meta {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.softmatcha-ios .softmatcha-status {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}

@@ -6,6 +6,7 @@ import {
   SuggestModal,
   TFile,
   Notice,
+  Platform,
   type ButtonComponent,
 } from "obsidian";
 import type {
@@ -41,6 +42,7 @@ export class Search extends SuggestModal<Hit> {
     private plugin: SearchHost,
   ) {
     super(app);
+    if (Platform.isIosApp) this.modalEl.addClass("softmatcha-ios");
     this.setPlaceholder(plugin.labels.placeholder);
     this.setInstructions([
       { command: "↑↓", purpose: plugin.labels.select },

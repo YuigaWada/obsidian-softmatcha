@@ -30,6 +30,9 @@ function fixture(options = {}) {
       this.listeners[k] = f;
     }
     dispatchEvent() {}
+    addClass(cls) {
+      this.cls = cls;
+    }
   }
   let modal, request, layoutReady, worker;
   class FakeWorker {
@@ -78,6 +81,7 @@ function fixture(options = {}) {
     open() {}
   }
   const obsidian = {
+    Platform: { isIosApp: options.ios ?? false },
     requestUrl: (request) =>
       options.requestUrl
         ? options.requestUrl(request)

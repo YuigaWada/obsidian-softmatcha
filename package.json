@@ -1,6 +1,6 @@
 {
   "name": "softmatcha-for-obsidian",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "scripts": {
     "build": "tsc --project config/tsconfig.json --noEmit && node scripts/build/plugin.mjs",
