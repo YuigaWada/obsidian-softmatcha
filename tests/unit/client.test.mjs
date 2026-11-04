@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import fs from "node:fs";
-function fixture() {
+function fixture(options = {}) {
   class Element {
     constructor() {
       this.listeners = {};
@@ -56,7 +56,7 @@ function fixture() {
 
   class Plugin {
     async loadData() {
-      return {};
+      return options.config ?? {};
     }
     addCommand(c) {
       this.command = c;
@@ -78,6 +78,10 @@ function fixture() {
     open() {}
   }
   const obsidian = {
+    requestUrl: (request) =>
+      options.requestUrl
+        ? options.requestUrl(request)
+        : Promise.reject(Error("No test download configured")),
     Plugin,
     SuggestModal,
     PluginSettingTab: class {},
@@ -106,7 +110,7 @@ function fixture() {
   vm.runInNewContext(fs.readFileSync("dist/main.js", "utf8"), context);
   const P = context.module.exports.default;
   const p = new P();
-  p.manifest = { id: "softmatcha-search" };
+  p.manifest = { id: "softmatcha-search", version: "0.3.3" };
   p.app = {
     vault: {
       configDir: ".obsidian",
@@ -229,4 +233,47 @@ test("blank excerpt lines are omitted without shifting Unicode highlights or sou
     root.children.find((x) => x.cls === "softmatcha-meta").text,
     /35/,
   );
+});
+
+test("startup downloads run asynchronously while search remains usable, and unloading prevents import", async () => {
+  const requests = [];
+  let finish;
+  const download = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const f = fixture({
+    config: { searchLanguages: ["en"] },
+    requestUrl: (request) => {
+      requests.push(request);
+      return download;
+    },
+  });
+  await f.p.onload();
+  assert.equal(requests.length, 0);
+  f.startup();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].url, /models-en-0\.3\.3\.zip$/);
+  f.p.command.callback();
+  await f.modal.getSuggestions("hello");
+  assert.equal(JSON.parse(f.request.body).query, "hello");
+  f.p.onunload();
+  finish({ status: 200, arrayBuffer: new ArrayBuffer(1) });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
+
+test("startup automatic-download opt-out makes no network requests", async () => {
+  let calls = 0;
+  const f = fixture({
+    config: { autoDownloadModels: false },
+    requestUrl: () => {
+      calls++;
+      throw Error("unexpected download");
+    },
+  });
+  await f.p.onload();
+  f.startup();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls, 0);
+  f.p.onunload();
 });

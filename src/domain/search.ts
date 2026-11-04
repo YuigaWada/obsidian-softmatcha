@@ -8,6 +8,7 @@ export class SearchFault extends Error {
 /** Search bounded context: platform-independent values and invariants. */
 export interface SearchConfig {
   uiLanguage: "auto" | UiLocale;
+  autoDownloadModels: boolean;
   searchLanguages: SearchLanguage[];
   locale?: UiLocale;
   similarity: number;
@@ -29,6 +30,7 @@ export interface SearchResult {
 }
 export const defaults: SearchConfig = {
   uiLanguage: "auto",
+  autoDownloadModels: true,
   searchLanguages: ["ja", "en"],
   similarity: 0.45,
   limit: 50,
@@ -75,6 +77,8 @@ export function loadSearchConfig(value: unknown): SearchConfig {
     saved.uiLanguage === "en"
   )
     result.uiLanguage = saved.uiLanguage;
+  if (typeof saved.autoDownloadModels === "boolean")
+    result.autoDownloadModels = saved.autoDownloadModels;
   if (Array.isArray(saved.searchLanguages))
     result.searchLanguages = [
       ...new Set(saved.searchLanguages.filter((l) => l === "ja" || l === "en")),

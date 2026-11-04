@@ -1,6 +1,6 @@
 {
   "name": "softmatcha-for-obsidian",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "scripts": {
     "build": "tsc --project config/tsconfig.json --noEmit && node scripts/build/plugin.mjs",
@@ -15,7 +15,8 @@
     "package": "python3 scripts/release/package.py",
     "package:models": "python3 scripts/release/package.py --models",
     "assets:catalog": "python3 scripts/models/catalog.py",
-    "test:rust": "cargo test --locked --manifest-path src/rust/Cargo.toml --target-dir build/rust -p softmatcha-core"
+    "test:rust": "cargo test --locked --manifest-path src/rust/Cargo.toml --target-dir build/rust -p softmatcha-core",
+    "test:ios": "node scripts/test/ios.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

@@ -14,7 +14,9 @@ metrics. The OS/app can clear this cache, causing reconstruction. Model weights,
 dictionary files, and settings are stored inside the plugin configuration
 folder. No local search operation sends note contents over the network.
 
-A model pack is imported only after the user selects a ZIP. Only known data
+Enabled language models are downloaded automatically after startup if missing,
+unless **Download models automatically** is disabled. A manual ZIP import is
+also available. Only known data
 entries with matching sizes and SHA-256 hashes are accepted. No script or
 native library is loaded from the ZIP. Updates to plugin code use Obsidian's
 normal update mechanism. The optional models can be disabled independently.
@@ -28,8 +30,15 @@ edits the active editor at the user's request.
 
 ## Network use
 
-- Opening the releases link in settings uses the system/browser's normal GitHub
-  connection. The plugin itself does not download models or contact GitHub.
+- Automatic model setup makes HTTPS GET requests to language-pack URLs under
+  `github.com/YuigaWada/obsidian-softmatcha/releases/download/models-<version>/`.
+  GitHub may redirect downloads to its release-asset CDN. Only the plugin version
+  and model language are part of the request; notes and queries are never sent.
+  GitHub receives normal connection metadata such as the client's IP address.
+- Automatic download is on by default and can be disabled in settings. Disabled
+  languages are not downloaded. Only missing model data is fetched, with a
+  five-minute retry delay after failure; plugin code is not downloaded or updated.
+- Opening the releases link in settings uses the system/browser's GitHub connection.
 - Development/release scripts fetch public model vectors from
   `dl.fbaipublicfiles.com` and packages from standard registries. Those scripts
   have no reason to receive or upload vault notes.

@@ -29,6 +29,8 @@ export function modelAssetStore(app: App, pluginId: string) {
     `${app.vault.configDir}/plugins/${pluginId}/assets`,
   );
   return {
+    text: (path: string) =>
+      app.vault.adapter.read(normalizePath(`${root}/${path}`)),
     exists: (path: string) =>
       app.vault.adapter.exists(normalizePath(`${root}/${path}`)),
     mkdir: async (path: string) => {

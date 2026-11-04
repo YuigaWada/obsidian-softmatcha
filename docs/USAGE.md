@@ -32,7 +32,8 @@ Omnisearch's filters/operators are not implemented.
 | Setting | Purpose |
 | --- | --- |
 | UI language | Follow Obsidian automatically, or choose English or Japanese. |
-| Import model pack | Select a data-only ZIP for the installed plugin version. |
+| Download models automatically | Fetch missing enabled-language model data from GitHub in the background after startup. Enabled by default; switch off to prevent automatic downloads. |
+| Import model pack | Optional manual import of a data-only ZIP for the installed plugin version. |
 | Japanese semantic search | Load and use the Japanese model and tokenizer. |
 | English semantic search | Load and use the English model. |
 | Minimum similarity | Raise to require closer word matches; lower to allow broader matches. |
@@ -43,15 +44,26 @@ Search is local; there is no service URL, API token, or external search setup.
 
 ## Model packs and preparation
 
-Download language packs from the separate `models-<plugin-version>` GitHub
-release, linked by **Model downloads** in settings, and import them there. The plugin validates entry names, sizes, and SHA-256
-hashes before saving files; imported packs contain data, not executable code.
-Import packs on each device. Sync products may not transfer additional files
-inside plugin folders.
+After startup, missing models for enabled languages are downloaded sequentially
+from GitHub Releases in the background and installed on this device. Existing
+complete models are reused. Disable **Download models automatically** to opt out,
+or disable a language to prevent its model download and loading. A disabled
+language is also checked again before installing an in-flight download.
+
+The plugin validates names, sizes, language, and SHA-256 hashes before saving
+any model data; packs contain no executable code. Download failure leaves exact
+search available and waits five minutes before retrying. No note text or search
+queries are sent. Wi-Fi or mobile data may be used: about 51 MiB for Japanese
+and 32 MiB for English. Download and installation status is shown in settings.
+
+Manual ZIP import remains available through **Import model pack**. Get packs
+from the separate `models-<plugin-version>` release linked by **Model downloads**.
+Each device requires its own model data; sync products may not copy additional
+files inside plugin folders.
 
 The supplied subsets contain 50,000 fastText words per language. Together with
 the Japanese dictionary, the unpacked data occupies about 135 MiB; RAM use is
-additional. Models are not downloaded automatically.
+additional. Model files are separate from the installed plugin code.
 
 When semantic search is enabled and model data is present, the plugin prepares
 models and index shards in the background after Obsidian starts. A large vault's

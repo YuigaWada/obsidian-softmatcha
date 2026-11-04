@@ -6,6 +6,7 @@ import {
   SuggestModal,
   TFile,
   Notice,
+  type ButtonComponent,
 } from "obsidian";
 import type {
   SearchConfig,
@@ -23,6 +24,9 @@ export interface SearchHost extends Plugin {
   readonly labels: ReturnType<typeof messages>;
   save(): Promise<void>;
   importModels(data: ArrayBuffer): Promise<void>;
+  readonly modelTransferActive: boolean;
+  readonly modelStatus: string;
+  onModelStatusChange(listener: () => void): () => void;
   query(query: string, isCurrent?: () => boolean): Promise<SearchResult>;
 }
 export class Search extends SuggestModal<Hit> {
@@ -155,6 +159,15 @@ export class Search extends SuggestModal<Hit> {
   }
 }
 export class Settings extends PluginSettingTab {
+  private transferButtons = new Set<ButtonComponent>();
+  private modelStatusCleanup: (() => void) | undefined;
+  hide() {
+    this.modelStatusCleanup?.();
+    this.modelStatusCleanup = undefined;
+  }
+  private setTransferButtons(disabled: boolean) {
+    for (const button of this.transferButtons) button.setDisabled(disabled);
+  }
   constructor(
     app: App,
     private plugin: SearchHost,
@@ -172,6 +185,7 @@ export class Settings extends PluginSettingTab {
         desc: labels.info,
         aliases: [
           labels.uiLanguage,
+          labels.autoDownload,
           labels.semanticJa,
           labels.semanticEn,
           labels.similarity,
@@ -184,6 +198,8 @@ export class Settings extends PluginSettingTab {
     ];
   }
   private renderSettings(container = this.containerEl) {
+    this.modelStatusCleanup?.();
+    this.transferButtons.clear();
     container.empty();
     const labels = this.plugin.labels;
     container.createEl("p", { text: labels.info });
@@ -206,36 +222,64 @@ export class Settings extends PluginSettingTab {
       text: ` ${labels.modelDownloads}`,
       href: `https://github.com/YuigaWada/obsidian-softmatcha/releases/tag/models-${this.plugin.manifest.version}`,
     });
-    modelSetting.addButton((button) =>
-      button.setButtonText(labels.importPack).onClick(() => {
-        const input = container.createEl("input", {
-          type: "file",
-          cls: "softmatcha-file-input",
-          attr: { accept: ".zip" },
+    const progress = container.createEl("p", {
+      cls: "softmatcha-model-status",
+      attr: { role: "status", "aria-live": "polite" },
+    });
+    const updateStatus = () => {
+      progress.setText(this.plugin.modelStatus);
+      this.setTransferButtons(this.plugin.modelTransferActive);
+    };
+    this.modelStatusCleanup = this.plugin.onModelStatusChange(updateStatus);
+    progress.setText(this.plugin.modelStatus);
+    new Setting(container)
+      .setName(labels.autoDownload)
+      .setDesc(labels.autoDownloadInfo)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.config.autoDownloadModels)
+          .onChange(async (value) => {
+            this.plugin.config.autoDownloadModels = value;
+            await this.plugin.save();
+          }),
+      );
+    modelSetting.addButton((button) => {
+      this.transferButtons.add(button);
+      button
+        .setDisabled(this.plugin.modelTransferActive)
+        .setButtonText(labels.importPack)
+        .onClick(() => {
+          const input = container.createEl("input", {
+            type: "file",
+            cls: "softmatcha-file-input",
+            attr: { accept: ".zip" },
+          });
+          input.addEventListener(
+            "change",
+            () => {
+              void (async () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                this.setTransferButtons(true);
+                progress.setText(labels.importing);
+                try {
+                  await this.plugin.importModels(await file.arrayBuffer());
+                  progress.setText(labels.imported);
+                  new Notice(labels.imported);
+                } catch (error) {
+                  progress.setText(errorText(error, this.plugin.locale));
+                  new Notice(errorText(error, this.plugin.locale));
+                } finally {
+                  input.remove();
+                  this.setTransferButtons(this.plugin.modelTransferActive);
+                }
+              })();
+            },
+            { once: true },
+          );
+          input.click();
         });
-        input.addEventListener(
-          "change",
-          () => {
-            void (async () => {
-              const file = input.files?.[0];
-              if (!file) return;
-              button.setDisabled(true).setButtonText(labels.importing);
-              try {
-                await this.plugin.importModels(await file.arrayBuffer());
-                new Notice(labels.imported);
-              } catch (error) {
-                new Notice(errorText(error, this.plugin.locale));
-              } finally {
-                input.remove();
-                button.setDisabled(false).setButtonText(labels.importPack);
-              }
-            })();
-          },
-          { once: true },
-        );
-        input.click();
-      }),
-    );
+    });
     for (const [language, label] of [
       ["ja", labels.semanticJa],
       ["en", labels.semanticEn],

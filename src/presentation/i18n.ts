@@ -3,8 +3,18 @@ const ja = {
   models: "意味検索モデル",
   importPack: "モデルパックを取り込む",
   importInfo:
-    "リリースページから言語別のモデルパックをダウンロードして選択してください。自動ダウンロードは行いません。",
+    "有効な言語のモデルをGitHubから取得します。取得済みモデルは再利用し、ノートや検索語は送信しません。ZIPの手動取り込みも使えます。",
   modelDownloads: "モデル配布ページ",
+  autoDownload: "モデルを自動取得",
+  autoDownloadInfo:
+    "有効な言語の不足モデルを起動後にバックグラウンドで取得します。日本語約51 MiB・英語約32 MiB。Wi-Fiまたはモバイル通信を使用します。オフにすると自動取得しません。",
+  downloading: "モデルをバックグラウンドでダウンロード中…",
+  downloadFailed:
+    "ダウンロードできませんでした。通信状態を確認して再度お試しください。ZIPの手動取り込みも利用できます。",
+  downloadMissing:
+    "このバージョンのモデルはまだ公開されていません。時間を置いて再度お試しください。",
+  downloadCancelled: "モデルの取り込みを中止しました。",
+  modelBusy: "別のモデルを取り込み中です。完了してからお試しください。",
   importing: "モデルパックを検証・保存中…",
   imported: "モデルパックを取り込みました。",
   invalidPack:
@@ -45,8 +55,18 @@ const en: Record<keyof typeof ja, string> = {
   models: "Semantic search models",
   importPack: "Import model pack",
   importInfo:
-    "Download a language model pack from the releases page, then select it here. Nothing is downloaded automatically.",
+    "Enabled language models are fetched from GitHub and reused on this device. Notes and search queries are never sent. Manual ZIP import is also available.",
   modelDownloads: "Model downloads",
+  autoDownload: "Download models automatically",
+  autoDownloadInfo:
+    "Missing models for enabled languages download in the background after startup: about 51 MiB for Japanese and 32 MiB for English. Uses Wi-Fi or mobile data. Switch off to prevent automatic downloads.",
+  downloading: "Downloading model in the background…",
+  downloadFailed:
+    "Download failed. Check your connection and try again, or import a ZIP manually.",
+  downloadMissing:
+    "Models for this version have not been published yet. Please try again later.",
+  downloadCancelled: "Model setup cancelled.",
+  modelBusy: "Another model import is running. Wait for it to finish.",
   importing: "Checking and saving model pack…",
   imported: "Model pack imported.",
   invalidPack:

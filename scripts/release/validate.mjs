@@ -88,6 +88,6 @@ assert.equal(
 
 assert.doesNotMatch(
   fs.readFileSync("dist/main.js", "utf8"),
-  /requestUrl|httpsRequired|\/v1\/search/,
-  "No remote search adapter should ship in the local-only plugin.",
+  /httpsRequired|\/v1\/search/,
+  "No remote search endpoint should ship in the on-device search plugin.",
 );

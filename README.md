@@ -19,6 +19,8 @@ Press `Cmd + Shift + O` to open the search panel.
 - **Multilingual interface:** Choose English or Japanese for the interface independently of the search models.
 - **Flexible memory usage:** Enable or disable English and Japanese models independently. Exact matching remains available even when both models are disabled.
 
+Missing models for enabled languages download automatically from GitHub Releases in the background. Disable automatic downloads in settings to opt out. Notes and search queries are never uploaded.
+
 ## License
 
 The original plugin code and project documentation are licensed under the [MIT License](LICENSE).

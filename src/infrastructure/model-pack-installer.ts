@@ -6,9 +6,18 @@ export interface AssetStore {
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
 }
-interface Catalog {
+export interface Catalog {
   schema: number;
   files: Record<string, { size: number; sha256: string; language: string }>;
+}
+function fileBuffer(bytes: Uint8Array): ArrayBuffer {
+  if (
+    bytes.buffer instanceof ArrayBuffer &&
+    bytes.byteOffset === 0 &&
+    bytes.byteLength === bytes.buffer.byteLength
+  )
+    return bytes.buffer;
+  return new Uint8Array(bytes).buffer;
 }
 interface Pack {
   schema: number;
@@ -64,10 +73,7 @@ export async function validateModelPack(
   for (const [name, entry] of expected) {
     const bytes = files[name];
     if (!bytes) throw new SearchFault("invalidPack");
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new Uint8Array(bytes).buffer,
-    );
+    const digest = await crypto.subtle.digest("SHA-256", fileBuffer(bytes));
     const hash = [...new Uint8Array(digest)]
       .map((v) => v.toString(16).padStart(2, "0"))
       .join("");
@@ -81,18 +87,26 @@ export class ModelPackInstaller {
     private store: AssetStore,
     private catalog: Catalog = bundledCatalog,
   ) {}
-  async install(data: ArrayBuffer): Promise<SearchLanguage[]> {
+  async install(
+    data: ArrayBuffer,
+    expectedLanguage?: SearchLanguage,
+  ): Promise<SearchLanguage[]> {
     let pack: Awaited<ReturnType<typeof validateModelPack>>;
     try {
       pack = await validateModelPack(data, this.catalog);
     } catch {
       throw new SearchFault("invalidPack");
     }
+    if (
+      expectedLanguage &&
+      (pack.languages.length !== 1 || pack.languages[0] !== expectedLanguage)
+    )
+      throw new SearchFault("invalidPack");
     // Validate the whole archive before any write; publish manifest last.
-    for (const [name, bytes] of Object.entries(pack.files).sort(
-      ([a], [b]) =>
-        Number(a === "manifest.json") - Number(b === "manifest.json"),
+    for (const name of Object.keys(pack.files).sort(
+      (a, b) => Number(a === "manifest.json") - Number(b === "manifest.json"),
     )) {
+      const bytes = pack.files[name];
       const parts = name.split("/");
       parts.pop();
       let path = "";
@@ -100,7 +114,8 @@ export class ModelPackInstaller {
         path = path ? `${path}/${part}` : part;
         if (!(await this.store.exists(path))) await this.store.mkdir(path);
       }
-      await this.store.write(name, new Uint8Array(bytes).buffer);
+      await this.store.write(name, fileBuffer(bytes));
+      delete pack.files[name];
     }
     return pack.languages;
   }
