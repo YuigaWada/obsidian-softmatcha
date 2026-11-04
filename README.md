@@ -6,13 +6,9 @@ SoftMatcha-Search combines exact matching with word-similarity search to help yo
 
 ## Installation
 
-Download `main.js`, `manifest.json`, and `styles.css` from [GitHub Releases](https://github.com/YuigaWada/obsidian-softmatcha/releases). Place them in `<vault-config>/plugins/softmatcha-search/` (normally `.obsidian/plugins/softmatcha-search/`) and enable **SoftMatcha Search** in Obsidian.
+Install **SoftMatcha-Search** from the [official Obsidian Community Plugins directory](https://obsidian.md/plugins?search=SoftMatcha-Search).
 
-Community directory submission is pending. Once approved, the plugin will be available as **SoftMatcha Search** through Obsidian’s Community plugins settings.
-
-Open **SoftMatcha Search: Search vault** from the command palette. Assign `Cmd + Shift + O` on macOS or `Ctrl + Shift + O` elsewhere in **Settings → Hotkeys** if available.
-
-For semantic search, download `models-en-<version>.zip` and/or `models-ja-<version>.zip` from the same release and select **Import model pack** in the plugin settings on each device. Both models and the Japanese dictionary occupy about 135 MiB unpacked, plus RAM during use. First-time indexing can take over a minute. See the [usage guide](docs/USAGE.md) and [privacy details](docs/PRIVACY.md).
+Press `Cmd + Shift + O` to open the search panel.
 
 ## Features
 
