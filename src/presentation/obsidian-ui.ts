@@ -204,7 +204,7 @@ export class Settings extends PluginSettingTab {
       .setDesc(labels.importInfo);
     modelSetting.descEl.createEl("a", {
       text: ` ${labels.modelDownloads}`,
-      href: "https://github.com/YuigaWada/SoftMatcha-for-Obsidian/releases",
+      href: `https://github.com/YuigaWada/obsidian-softmatcha/releases/tag/models-${this.plugin.manifest.version}`,
     });
     modelSetting.addButton((button) =>
       button.setButtonText(labels.importPack).onClick(() => {

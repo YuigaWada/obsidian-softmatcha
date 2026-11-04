@@ -28,7 +28,7 @@ Obsidianのコミュニティプラグイン設定で **SoftMatcha Search** を�
 
 ### 意味検索を有効にする
 
-1. プラグインと同じリリースの `models-ja-<version>.zip` または `models-en-<version>.zip` を取得します。
+1. 設定のモデル配布ページから、専用リリース `models-<version>` の `models-ja-<version>.zip` または `models-en-<version>.zip` を取得します。
 2. **設定 → SoftMatcha Search → モデルパックを取り込む** からZIPを選択します。
 3. 同じ設定画面で、利用する言語の意味検索を有効にします。
 

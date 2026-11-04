@@ -43,8 +43,8 @@ Search is local; there is no service URL, API token, or external search setup.
 
 ## Model packs and preparation
 
-Download language packs from the plugin's matching GitHub release and import
-them through settings. The plugin validates entry names, sizes, and SHA-256
+Download language packs from the separate `models-<plugin-version>` GitHub
+release, linked by **Model downloads** in settings, and import them there. The plugin validates entry names, sizes, and SHA-256
 hashes before saving files; imported packs contain data, not executable code.
 Import packs on each device. Sync products may not transfer additional files
 inside plugin folders.

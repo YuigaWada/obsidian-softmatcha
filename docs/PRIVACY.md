@@ -4,7 +4,8 @@
 
 The plugin reads Markdown files through Obsidian's vault APIs, including text,
 relative paths, modification times, and file sizes. A Worker performs local
-matching/index construction. It makes no requests to an external AI provider
+matching/index construction. Vault-wide search requires enumerating Markdown
+notes to build the index. Paths inside hidden directories are excluded. It makes no requests to an external AI provider
 and contains no telemetry, analytics, advertising, or payment flow.
 
 The index/checkpoints contain note text, token offsets, paths, and corpus-derived
