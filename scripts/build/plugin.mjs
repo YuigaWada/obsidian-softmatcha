@@ -1,0 +1,61 @@
+import { readFileSync, readdirSync, copyFileSync, mkdirSync } from "node:fs";
+import { build } from "esbuild";
+const worker = await build({
+  entryPoints: ["src/infrastructure/worker/search-worker.ts"],
+  bundle: true,
+  write: false,
+  format: "iife",
+  platform: "browser",
+  target: "es2020",
+  loader: { ".wasm": "binary" },
+  define: { "import.meta.url": '""' },
+});
+await build({
+  entryPoints: ["src/main.ts"],
+  bundle: true,
+  external: ["obsidian"],
+  format: "cjs",
+  platform: "browser",
+  target: "es2020",
+  outfile: "dist/main.js",
+  banner: {
+    js:
+      "/*\n" +
+      readFileSync("licenses/THIRD_PARTY_NOTICES.md", "utf8").replaceAll(
+        "*/",
+        "* /",
+      ) +
+      "\n" +
+      readdirSync("licenses")
+        .filter((n) => !n.endsWith(".json") && n !== "THIRD_PARTY_NOTICES.md")
+        .sort()
+        .map(
+          (n) =>
+            "\n--- " +
+            n +
+            " ---\n" +
+            readFileSync("licenses/" + n, "utf8").replaceAll("*/", "* /"),
+        )
+        .join("\n") +
+      "\n*/",
+  },
+  plugins: [
+    {
+      name: "worker-source",
+      setup(b) {
+        b.onResolve({ filter: /^softmatcha-worker-source$/ }, () => ({
+          path: "worker-source",
+          namespace: "inline",
+        }));
+        b.onLoad({ filter: /.*/, namespace: "inline" }, () => ({
+          contents: `export default ${JSON.stringify(worker.outputFiles[0].text)}`,
+          loader: "js",
+        }));
+      },
+    },
+  ],
+});
+
+mkdirSync("dist", { recursive: true });
+copyFileSync("manifest.json", "dist/manifest.json");
+copyFileSync("src/presentation/styles.css", "dist/styles.css");

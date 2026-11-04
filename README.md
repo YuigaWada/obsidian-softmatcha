@@ -1,135 +1,109 @@
-# SoftMatcha Search
+# SoftMatcha for Obsidian
 
-Find English and Japanese passages in your Markdown notes. Search exact text
-out of the box, or add optional local models to find semantically similar words
-with the SoftMatcha 2 engine.
+Find the passage you remember—even when you remember different words.
 
-[日本語](README.ja.md) · [Setup](#optional-semantic-search) · [Development](docs/DEVELOPMENT.md) · [Privacy](docs/PRIVACY.md)
+**SoftMatcha Search** brings local English and Japanese search to Obsidian.
+Search filenames and note text immediately, or add language models to find
+passages containing semantically similar words with
+[SoftMatcha 2](https://github.com/softmatcha/softmatcha2).
 
-## Features
+[日本語](docs/README.ja.md) · [Documentation](docs/USAGE.md) · [Changelog](docs/CHANGELOG.md)
 
-- Filename and case-insensitive body search without a model or account.
-- Optional English and Japanese semantic search, using an embedded Rust/WASM
-  port of [SoftMatcha 2](https://github.com/softmatcha/softmatcha2).
-- Inline highlighting of the actual matched passage, including soft matches.
-- Compact excerpts: blank lines are omitted without changing the source note.
-- Open a result, open in a new tab, or insert a Markdown link.
-- Background preparation and persistent local index checkpoints.
-- Separate opt-outs for English and Japanese models. Disabled models are not
-  loaded. Both may be disabled while exact text search remains available.
-- English/Japanese UI, following Obsidian or an explicit language setting.
+## Documentation
+
+- [Search, settings, and model setup](docs/USAGE.md)
+- [Privacy and local storage](docs/PRIVACY.md)
+- [Development](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ## Installation
 
-**Community directory:** once the plugin has been approved and listed, search
-for **SoftMatcha Search** in **Settings → Community plugins → Browse**. This
-repository being available does not by itself mean the plugin has been approved.
+The plugin has not yet been listed in the Obsidian Community directory.
 
-**Manual installation:** download `main.js`, `manifest.json`, and `styles.css`
-from a [GitHub release](https://github.com/YuigaWada/SoftMatcha-for-Obsidian/releases).
-Place them in `<vault-config>/plugins/softmatcha-search/` and enable the plugin.
-The default vault configuration directory is `.obsidian`; custom configuration
-directories work too. Alternatively extract `softmatcha-for-obsidian.zip` into
-that plugin directory.
+For a manual installation, download `main.js`, `manifest.json`, and `styles.css`
+from a [release](https://github.com/YuigaWada/SoftMatcha-for-Obsidian/releases),
+when one is available. Put all three files in
+`<vault-config>/plugins/softmatcha-search/`, then enable **SoftMatcha Search** in
+Obsidian. The default vault configuration directory is `.obsidian`.
+The release ZIP, `softmatcha-for-obsidian.zip`, can also be extracted there.
 
-No Python, Rust toolchain, search server, model download, or account is needed
-for the installed plugin's exact search.
+To build from source, see the [development guide](docs/DEVELOPMENT.md).
+Filename and exact text search work without downloading a model.
+
+### Enable semantic search
+
+1. Download `models-en-<version>.zip` and/or `models-ja-<version>.zip` from the
+   same release as your plugin.
+2. Open **Settings → SoftMatcha Search → Import model pack** and choose the ZIP.
+3. Enable the languages you want to search with in the same settings page.
+
+Models are optional, imported manually, and stored on your device. Search needs
+no account, subscription, API key, or service URL. Import packs on each device;
+additional plugin files may not be transferred by your sync service.
+
+## Features
+
+- **Search your Markdown notes** by filename, exact text, or similar words.
+- **English and Japanese support**, with a separate semantic-search switch for
+  each language. Disabled models are not loaded.
+- **Highlighted passages** showing the actual matching text, with compact
+  previews that omit empty lines.
+- **Keyboard navigation** to select results, open notes at the matching line,
+  open another tab, or insert a Markdown link.
+- **Background preparation** when Obsidian starts, with persistent local index
+  checkpoints for subsequent sessions.
+- **On-device search** through a Rust/WebAssembly engine running in a Worker.
+- **English and Japanese interface**, following Obsidian or your chosen setting.
 
 ## Usage
 
-Run **SoftMatcha Search: Search vault** from the command palette, or use the
-search ribbon icon. Assign your preferred shortcut in **Settings → Hotkeys**;
-`Cmd+Shift+O` on macOS or `Ctrl+Shift+O` elsewhere is a suggestion. No hotkey is
-assigned automatically, so existing shortcuts are not overridden.
+Open **SoftMatcha Search: Search vault** from the command palette, or select the
+search ribbon icon. In **Settings → Hotkeys**, assign **Cmd+Shift+O** on macOS or
+**Ctrl+Shift+O** elsewhere if available. The plugin does not assign a default.
 
-| Key | Action |
+| Shortcut | Action |
 | --- | --- |
-| Up / Down | Select a result |
-| Enter | Open the note at the result's original line |
+| ↑ / ↓ | Select a result |
+| Enter | Open the note at the matching line |
 | Cmd/Ctrl+Enter | Open in a new tab |
 | Alt+Enter | Insert a Markdown link into the active editor |
 
-Search does not rewrite notes. Link insertion occurs only when you choose it.
+Search leaves your notes unchanged. Link insertion writes only when you choose
+that action.
 
-## Optional semantic search
+## Compatibility and limits
 
-1. Download `models-en-<version>.zip` and/or `models-ja-<version>.zip` from the
-   **same release** as the plugin.
-2. Open **Settings → SoftMatcha Search → Import model pack** and select the ZIP.
-3. Keep the desired **English semantic search** and **Japanese semantic search**
-   switches enabled. Disable either to prevent its model being loaded.
+Requires **Obsidian 1.8.7 or newer**. Search and settings have been manually
+tested on macOS with Obsidian 1.15.0. iOS, Android, Windows, and Linux app testing
+is still pending; CI tests do not establish device compatibility.
 
-Model packs contain data only. The plugin validates entry names, sizes, and
-SHA-256 hashes against its bundled catalog before writing them inside its own
-plugin directory. It never installs scripts or updates itself from a pack.
-There are no automatic downloads. Import a pack on each device; do not assume
-your sync provider transfers files inside plugin directories.
+Both models and the Japanese dictionary use about **135 MiB of disk space**
+when unpacked and require additional RAM. First-time indexing of a large vault
+can take over a minute. Later sessions restore checkpoints, but still load the
+models into memory. You can enable one language or use exact search alone.
 
-The packs use the first 50,000 vocabulary entries of the official fastText
-English/Japanese models. Together their expanded data and Japanese dictionary
-occupy about 135 MiB. Using a single language reduces memory needs. Initial
-index construction can take a minute or longer for a larger vault; subsequent
-starts restore cached indices. Model/dictionary expansion is still needed
-on every application start. Cache removal by the OS causes a rebuild.
+Semantic search uses word similarity within each language, rather than
+translation or document-level question answering. Queries are limited to 12
+semantic tokens. PDF/image OCR and Omnisearch's query syntax are not supported.
+See the [usage guide](docs/USAGE.md) for routing and fallback behavior.
 
-Queries containing Japanese script use the Japanese model; other queries use
-the English model. Cross-language translation is not provided. Exact matches
-remain available for unknown words, mixed-language queries, and missing models.
-Semantic queries are limited to 12 tokens and have candidate/time limits.
-PDF/OCR and full Omnisearch query-syntax compatibility are not provided.
+## Privacy
 
-## Platform support
+Search runs locally without uploading notes or sending telemetry. Imported
+models live in the plugin configuration folder. Index checkpoints include note
+text and positions and are stored in the app's IndexedDB. Read the
+[privacy guide](docs/PRIVACY.md) for storage and data flow details.
 
-The installed plugin uses Obsidian and Web APIs; it does not load Node.js,
-Electron, Python, or OS-specific Rust libraries. Minimum Obsidian: **1.8.7**.
+## License
 
-The implementation targets desktop and mobile. Search and setup UI have been
-manually checked on **macOS / Obsidian 1.15.0**. iOS, Android, Windows, and Linux
-Obsidian applications have **not** been manually verified. CI is configured to run the Node
-build/tests on desktop OS runners; that is not a substitute for Obsidian or
-mobile testing. Mobile memory limits may make exact-only or one-model search
-preferable. Report issues with a synthetic reproduction.
+Original code is licensed under [MIT](LICENSE). The SoftMatcha 2 port retains
+Apache-2.0 and attributed MIT portions. fastText models use CC BY-SA 3.0;
+Japanese dictionary data retains its upstream terms. Full texts and attribution
+are in [third-party notices](licenses/THIRD_PARTY_NOTICES.md) and [licenses](licenses/).
 
-## Network, storage, and privacy
+## Acknowledgments
 
-- Local exact and model-based search make no network requests and upload no notes.
-- No client telemetry, analytics, advertising, account, payment, or subscription.
-- Models are downloaded manually by you from GitHub Releases. Release build
-  scripts obtain public vectors from `dl.fbaipublicfiles.com`; they do not read
-  your vault. Neither model download happens automatically inside the plugin.
-- Local checkpoints include note text and token positions in the app's IndexedDB.
-  Model files and settings live inside this plugin's vault configuration folder.
-- Apart from the model ZIP you explicitly select through the file picker, the
-  installed plugin does not read outside the vault or scan your filesystem.
-  Search results never execute HTML from your notes.
-
-Details: [privacy and data flow](docs/PRIVACY.md).
-
-## Development and releases
-
-```sh
-npm ci
-npm run check
-npm run package
-```
-
-A normal build uses the included WASM artifact; no model or Rust download occurs.
-The full Rust source is included, with regeneration and upstream attribution in
-[development](docs/DEVELOPMENT.md). Actual-model tests run when local assets are
-present; the ordinary tests use synthetic data and do not download anything.
-
-[Release procedure](docs/RELEASING.md) · [Contributing](CONTRIBUTING.md) ·
-[Architecture](ARCHITECTURE.md) · [Changelog](CHANGELOG.md)
-
-## License and acknowledgments
-
-Original plugin/application code: [MIT](LICENSE). The included SoftMatcha 2 port
-retains Apache-2.0 and attributed MIT portions. fastText vector subsets remain
-CC BY-SA 3.0; the Japanese IPADIC dictionary retains its NAIST/ICOT notices.
-See [third-party notices](THIRD_PARTY_NOTICES.md) and `licenses/` for the full
-texts, upstream commit, authors, and changes. Model data is distributed
-separately from the plugin code.
-
-This is an independent community integration, not an official Obsidian or
-SoftMatcha product. The repository name is **SoftMatcha-for-Obsidian**; the
-community plugin display name is **SoftMatcha Search**.
+Built on [SoftMatcha 2](https://github.com/softmatcha/softmatcha2),
+[fastText](https://fasttext.cc/), and [kuromoji.js](https://github.com/takuyaa/kuromoji.js).
+The README's organization takes inspiration from
+[Omnisearch](https://github.com/scambier/obsidian-omnisearch).
+This is an independent community integration.

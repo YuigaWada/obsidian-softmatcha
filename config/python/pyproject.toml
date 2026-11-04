@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+testpaths = ["../../tests/native"]
+cache_dir = ".local/cache/pytest"
+
+[tool.ruff]
+cache-dir = "../../.local/cache/ruff"
