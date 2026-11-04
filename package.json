@@ -25,7 +25,7 @@
     "fake-indexeddb": "^6.2.7",
     "obsidian": "^1.8.7",
     "prettier": "^3.9.10",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "fflate": "^0.8.3",
