@@ -6,13 +6,12 @@
 ファイル名・本文の文字列一致ですぐに検索でき、任意のモデルを追加すると
 [SoftMatcha 2](https://github.com/softmatcha/softmatcha2)で意味の近い単語を含む箇所も探せます。
 
-[English](../README.md) · [使い方の詳細（英語）](USAGE.md) · [変更履歴](CHANGELOG.md)
+[English](../README.md) · [使い方の詳細（英語）](USAGE.md)
 
 ## ドキュメント
 
 - [検索・設定・モデル導入（英語）](USAGE.md)
 - [プライバシーと保存データ](PRIVACY.md)
-- [開発](DEVELOPMENT.md) · [設計](ARCHITECTURE.md)
 
 ## インストール
 
@@ -25,7 +24,6 @@ Obsidianのコミュニティプラグイン設定で **SoftMatcha Search** を�
 既定のvault設定ディレクトリは `.obsidian` です。
 配布ZIPの `softmatcha-for-obsidian.zip` を同じ場所に展開しても導入できます。
 
-ソースからの導入は[開発ガイド](DEVELOPMENT.md)を参照してください。
 ファイル名と本文の文字列一致は、モデルをダウンロードせずに使えます。
 
 ### 意味検索を有効にする

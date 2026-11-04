@@ -15,7 +15,7 @@ MIT-licensed portions attributed in `licenses/SoftMatcha1-MIT.txt`.
 Changes remove Python/NumPy and Unix file I/O, use ndarray and immutable byte
 buffers, replace Rayon with sequential execution, adapt clocks and integer
 widths for WebAssembly, and add small-vocabulary bounds checks. Portable index
-construction and the application adapters are documented in `docs/ARCHITECTURE.md`.
+construction and the application adapters are implemented in `src/rust/core/src/`.
 See `src/rust/core/NOTICE`, `licenses/SoftMatcha2-Apache-2.0.txt`, and the upstream source.
 This is an independent Obsidian integration, not an official SoftMatcha product.
 
