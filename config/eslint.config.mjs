@@ -8,7 +8,7 @@ export default defineConfig([
       "main.js",
       "dist/**",
       ".local/assets/**",
-      "crates/**",
+      "src/rust/**",
       "dev/native-reference/**",
       "scripts/**",
       "tests/**",

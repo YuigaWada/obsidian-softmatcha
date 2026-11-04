@@ -17,7 +17,7 @@ tests run only if `.local/assets/manifest.json` exists. No test downloads a mode
 are the distribution mechanism.
 
 The ordinary build consumes the included `resources/wasm/` artifact.
-Its complete source and locked Rust dependency graph are under `crates/` with a Cargo workspace in that directory.
+Its complete source and locked Rust dependency graph are under `src/rust/` with a Cargo workspace in that directory.
 Generated bindings and WASM are included so Obsidian's Node build verifier
 and contributors do not need to install another toolchain to build the plugin.
 The artifact contains no model data, corpus, credentials, or native OS library.
@@ -30,7 +30,7 @@ wasm-pack 0.15.0:
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack --version 0.15.0 --locked
-cargo test --locked --manifest-path crates/Cargo.toml -p softmatcha-core
+npm run test:rust
 npm run build:wasm
 npm run check
 ```

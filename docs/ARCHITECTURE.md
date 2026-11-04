@@ -30,11 +30,11 @@ flowchart LR
 
 ## Rustの境界
 
-- `crates/core/src/domain.rs`: 文書・トークン・候補と単語ベクトルの検証。
-- `crates/core/src/application.rs`: 検索実行と `IndexRepository` Port。索引の具象実装をimportしない。
-- `crates/core/src/indexing.rs`: メモリ上の圧縮接尾辞索引、文書境界、候補位置の復元、UTF-16範囲への変換、索引保存・復元。
-- `crates/core/src/upstream/`: 固定した公式SoftMatcha 2の候補列挙・検索コードの移植。Python/NumPy、Unixのpread、Rayonを外し、バイト列・ndarray・逐次処理・web-timeへ置き換えた。
-- `crates/wasm/`: wasm-bindgenによる外側の入出力アダプター。OS固有コードを持たない。
+- `src/rust/core/src/domain.rs`: 文書・トークン・候補と単語ベクトルの検証。
+- `src/rust/core/src/application.rs`: 検索実行と `IndexRepository` Port。索引の具象実装をimportしない。
+- `src/rust/core/src/indexing.rs`: メモリ上の圧縮接尾辞索引、文書境界、候補位置の復元、UTF-16範囲への変換、索引保存・復元。
+- `src/rust/core/src/upstream/`: 固定した公式SoftMatcha 2の候補列挙・検索コードの移植。Python/NumPy、Unixのpread、Rayonを外し、バイト列・ndarray・逐次処理・web-timeへ置き換えた。
+- `src/rust/wasm/`: wasm-bindgenによる外側の入出力アダプター。OS固有コードを持たない。
 
 WASM版は自前でポータブル索引を構築し、pair/trioビット集合の追加枝刈りを省略する。単語の置換・挿入・削除を列挙する本体アルゴリズムは保持するが、候補数・時間上限、日本語の辞書実装、索引の構築法が異なるため、ネイティブ版と全クエリで完全に同じ順位になる保証はしない。
 

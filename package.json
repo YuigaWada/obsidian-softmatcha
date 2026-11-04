@@ -14,7 +14,8 @@
     "version:bump": "node scripts/release/version.mjs",
     "package": "python3 scripts/release/package.py",
     "package:models": "python3 scripts/release/package.py --models",
-    "assets:catalog": "python3 scripts/models/catalog.py"
+    "assets:catalog": "python3 scripts/models/catalog.py",
+    "test:rust": "cargo test --locked --manifest-path src/rust/Cargo.toml --target-dir build/rust -p softmatcha-core"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

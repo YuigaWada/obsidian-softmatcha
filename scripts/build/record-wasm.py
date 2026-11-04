@@ -2,7 +2,7 @@
 from pathlib import Path
 import hashlib,json,subprocess
 root=Path(__file__).resolve().parents[2]
-paths=[root/'crates/Cargo.toml',root/'crates/Cargo.lock',*sorted((root/'crates/core').rglob('*.rs')),*sorted((root/'crates/wasm').rglob('*.rs')),root/'crates/core/Cargo.toml',root/'crates/wasm/Cargo.toml']
+paths=[root/'src/rust/Cargo.toml',root/'src/rust/Cargo.lock',*sorted((root/'src/rust/core').rglob('*.rs')),*sorted((root/'src/rust/wasm').rglob('*.rs')),root/'src/rust/core/Cargo.toml',root/'src/rust/wasm/Cargo.toml']
 sha=hashlib.sha256()
 for path in sorted(paths):sha.update(path.relative_to(root).as_posix().encode()+b'\0'+path.read_bytes())
 wasm=(root/'resources/wasm/softmatcha_wasm_bg.wasm').read_bytes()

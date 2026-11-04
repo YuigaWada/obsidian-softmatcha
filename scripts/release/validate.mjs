@@ -70,12 +70,12 @@ const rustFiles = (dir) =>
           : [],
     );
 const sourceFiles = [
-  "crates/Cargo.toml",
-  "crates/Cargo.lock",
-  "crates/core/Cargo.toml",
-  "crates/wasm/Cargo.toml",
-  ...rustFiles("crates/core/src"),
-  ...rustFiles("crates/wasm/src"),
+  "src/rust/Cargo.toml",
+  "src/rust/Cargo.lock",
+  "src/rust/core/Cargo.toml",
+  "src/rust/wasm/Cargo.toml",
+  ...rustFiles("src/rust/core/src"),
+  ...rustFiles("src/rust/wasm/src"),
 ].sort();
 const hash = createHash("sha256");
 for (const file of sourceFiles)

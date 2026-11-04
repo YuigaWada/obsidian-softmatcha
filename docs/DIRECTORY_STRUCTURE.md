@@ -2,11 +2,17 @@
 
 ```text
 SoftMatcha-for-Obsidian/
-├── src/                     Obsidian plugin (domain/application/adapters/UI)
+├── src/                     Production implementations
+│   ├── domain/              Domain types and rules
+│   ├── application/         Search use cases and ports
+│   ├── infrastructure/      Obsidian/storage/Worker adapters
+│   ├── presentation/        UI, translations and stylesheet
+│   ├── composition/         Application wiring
+│   ├── main.ts              Obsidian plugin entry point
+│   └── rust/                Cargo workspace and lockfile
+│       ├── core/            Portable Rust search engine
+│       └── wasm/            wasm-bindgen entry point
 ├── config/                  ESLint, TypeScript and Python tool configuration
-├── crates/
-│   ├── core/                Portable Rust search engine
-│   └── wasm/                wasm-bindgen entry point
 ├── resources/
 │   ├── wasm/                Versioned runtime WASM/bindings and build provenance
 │   └── model-catalog.json   Expected model-data names, sizes and hashes
@@ -31,8 +37,8 @@ SoftMatcha-for-Obsidian/
 └── dist/                    Ignored final plugin files, ZIPs and checksums
 ```
 
-`crates/Cargo.toml` and `crates/Cargo.lock` define the Rust workspace. Obsidian's
-manifest and versions file stay at the root, along with package
+`src/rust/Cargo.toml` and `src/rust/Cargo.lock` define the Rust workspace. Obsidian's
+manifest and versions file stay at the root, along with
 npm metadata, README and LICENSE. Styles live in
 `src/presentation/styles.css`; Python tooling configuration lives with the
 other tool settings in `config/python/pyproject.toml`. Community
@@ -70,7 +76,7 @@ not change when the source repository is rearranged.
 
 ## Placement rules
 
-- `src/` and `crates/` contain production implementations; test fixtures and
+- `src/` contains production implementations, including Rust in `src/rust/`; test fixtures and
   developer tools do not belong there.
 - `resources/` contains checked-in inputs required by the plugin build.
   `build/` and `dist/` contain disposable outputs, never source files.
@@ -91,3 +97,7 @@ root manifest for submission and reads root version metadata for compatibility;
 keeping npm metadata here preserves the ordinary build/review entry point.
 Japanese documentation lives in `docs/README.ja.md`; third-party notices live
 in `licenses/THIRD_PARTY_NOTICES.md`.
+
+`.cargo/` is optional machine-local configuration and is ignored by Git.
+`npm run build:wasm` and `npm run test:rust` select `build/rust/` explicitly,
+so a checkout does not require a local Cargo configuration file.

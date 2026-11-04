@@ -14,3 +14,7 @@ __pycache__/
 coverage/
 *.log
 .DS_Store
+
+# Optional machine-local Cargo settings and ad-hoc Rust build output
+/.cargo/
+**/target/

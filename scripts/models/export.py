@@ -21,7 +21,7 @@ for language in ['ja','en']:
 metadata={**models['ja'],'models':models,'dictionaries':[f.name.removesuffix('.dat.gz') for f in files]}
 (target/'manifest.json').write_text(json.dumps(metadata))
 for file in ['LICENSE-2.0.txt','NOTICE.md']:shutil.copy2(root/'node_modules/kuromoji'/file,target/'LICENSES'/file)
-for source,name in [('crates/core/LICENSE','SOFTMATCHA-APACHE-2.0.txt'),('crates/core/NOTICE','SOFTMATCHA-NOTICE.txt'),('LICENSE','PLUGIN-MIT.txt')]:shutil.copy2(root/source,target/'LICENSES'/name)
+for source,name in [('src/rust/core/LICENSE','SOFTMATCHA-APACHE-2.0.txt'),('src/rust/core/NOTICE','SOFTMATCHA-NOTICE.txt'),('LICENSE','PLUGIN-MIT.txt')]:shutil.copy2(root/source,target/'LICENSES'/name)
 print('Exported Japanese/English models and dictionary assets.')
 
 shutil.copy2(root/'licenses/fastText-CC-BY-SA-3.0.txt',target/'LICENSES'/'fastText-CC-BY-SA-3.0.txt')

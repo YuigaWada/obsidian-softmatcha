@@ -52,7 +52,7 @@ test("Python and Rust use cases also keep framework/index dependencies outside",
       fs.readFileSync(file, "utf8"),
       /(?:from|import)\s+(?:fastapi|pydantic|infrastructure|http_api|service|softmatcha)\b/,
     );
-  const application = fs.readFileSync("crates/core/src/application.rs", "utf8");
+  const application = fs.readFileSync("src/rust/core/src/application.rs", "utf8");
   assert.doesNotMatch(
     application,
     /use\s+crate::[^;]*(?:indexing|upstream|storage)/,
