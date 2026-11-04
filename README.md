@@ -1,109 +1,54 @@
-# SoftMatcha for Obsidian
+# SoftMatcha Search for Obsidian
 
-Find the passage you remember—even when you remember different words.
+![GitHub release (latest by date and asset)](https://img.shields.io/github/downloads/YuigaWada/obsidian-softmatcha/latest/main.js)
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/YuigaWada/obsidian-softmatcha)
 
-**SoftMatcha Search** brings local English and Japanese search to Obsidian.
-Search filenames and note text immediately, or add language models to find
-passages containing semantically similar words with
-[SoftMatcha 2](https://github.com/softmatcha/softmatcha2).
+---
 
-[日本語](docs/README.ja.md) · [Documentation](docs/USAGE.md) · [Changelog](docs/CHANGELOG.md)
+**SoftMatcha Search** is a search engine that "_just works_".
+It shows matching passages with highlighted text, with optional semantic matching for English and Japanese.
+
+Under the hood, it uses the excellent [SoftMatcha 2](https://github.com/softmatcha/softmatcha2) engine, ported to Rust/WebAssembly. Search runs on your device.
 
 ## Documentation
 
-- [Search, settings, and model setup](docs/USAGE.md)
-- [Privacy and local storage](docs/PRIVACY.md)
-- [Development](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md)
+[Usage and settings](docs/USAGE.md) · [日本語](docs/README.ja.md) · [Privacy](docs/PRIVACY.md)
 
 ## Installation
 
-The plugin has not yet been listed in the Obsidian Community directory.
+- SoftMatcha Search can be built from source using the [development guide](docs/DEVELOPMENT.md). Copy `main.js`, `manifest.json`, and `styles.css` from `dist/` into `<vault-config>/plugins/softmatcha-search/`, then enable the plugin. The default vault configuration directory is `.obsidian`.
+- Release builds, when available, can be installed from [GitHub Releases](https://github.com/YuigaWada/obsidian-softmatcha/releases). The plugin is not yet listed in the official Community directory.
+- Optional English and Japanese model packs can be imported through the plugin settings. Use packs from the same plugin release. Nothing is downloaded automatically.
 
-For a manual installation, download `main.js`, `manifest.json`, and `styles.css`
-from a [release](https://github.com/YuigaWada/SoftMatcha-for-Obsidian/releases),
-when one is available. Put all three files in
-`<vault-config>/plugins/softmatcha-search/`, then enable **SoftMatcha Search** in
-Obsidian. The default vault configuration directory is `.obsidian`.
-The release ZIP, `softmatcha-for-obsidian.zip`, can also be extracted there.
-
-To build from source, see the [development guide](docs/DEVELOPMENT.md).
-Filename and exact text search work without downloading a model.
-
-### Enable semantic search
-
-1. Download `models-en-<version>.zip` and/or `models-ja-<version>.zip` from the
-   same release as your plugin.
-2. Open **Settings → SoftMatcha Search → Import model pack** and choose the ZIP.
-3. Enable the languages you want to search with in the same settings page.
-
-Models are optional, imported manually, and stored on your device. Search needs
-no account, subscription, API key, or service URL. Import packs on each device;
-additional plugin files may not be transferred by your sync service.
+You can check the [CHANGELOG](docs/CHANGELOG.md) for more information on the different versions.
 
 ## Features
 
-- **Search your Markdown notes** by filename, exact text, or similar words.
-- **English and Japanese support**, with a separate semantic-search switch for
-  each language. Disabled models are not loaded.
-- **Highlighted passages** showing the actual matching text, with compact
-  previews that omit empty lines.
-- **Keyboard navigation** to select results, open notes at the matching line,
-  open another tab, or insert a Markdown link.
-- **Background preparation** when Obsidian starts, with persistent local index
-  checkpoints for subsequent sessions.
-- **On-device search** through a Rust/WebAssembly engine running in a Worker.
-- **English and Japanese interface**, following Obsidian or your chosen setting.
+> SoftMatcha Search's first goal is to _locate_ notes and matching passages. You can see it as a _Quick Switcher_ on steroids.
 
-## Usage
+- Find your **📝Markdown notes** by filename, exact text, or semantically similar words
+- Semantic passage matching using the [SoftMatcha 2 algorithm](https://github.com/softmatcha/softmatcha2)
+  - English and Japanese models are optional and can be disabled independently; exact text search works without them
+- Keyboard first: you never have to use your mouse
+- Workflow similar to the "Quick Switcher" core plugin
+- Local Rust/WebAssembly search, without a service URL or API key
+- Highlighted matches and compact previews without blank lines
+- Background index preparation when Obsidian starts and persistent local checkpoints
+- Directly insert a Markdown link from the search results
+- English and Japanese interface, following Obsidian or an explicit setting
 
-Open **SoftMatcha Search: Search vault** from the command palette, or select the
-search ribbon icon. In **Settings → Hotkeys**, assign **Cmd+Shift+O** on macOS or
-**Ctrl+Shift+O** elsewhere if available. The plugin does not assign a default.
+**Note:** assign your shortcut in Obsidian's Hotkeys settings (suggested: Cmd/Ctrl+Shift+O). The two language models and Japanese dictionary occupy about 135 MiB unpacked, with additional RAM required. Initial indexing can take over a minute. Requires Obsidian 1.8.7+; macOS has been manually tested, while other app platforms remain unverified. PDF/image OCR, query operators, and cross-language translation search are not supported. See the [documentation](docs/USAGE.md) for details.
 
-| Shortcut | Action |
-| --- | --- |
-| ↑ / ↓ | Select a result |
-| Enter | Open the note at the matching line |
-| Cmd/Ctrl+Enter | Open in a new tab |
-| Alt+Enter | Insert a Markdown link into the active editor |
+## Projects that use SoftMatcha Search
 
-Search leaves your notes unchanged. Link insertion writes only when you choose
-that action.
+_Submit a PR to add your own project!_
 
-## Compatibility and limits
+## LICENSE
 
-Requires **Obsidian 1.8.7 or newer**. Search and settings have been manually
-tested on macOS with Obsidian 1.15.0. iOS, Android, Windows, and Linux app testing
-is still pending; CI tests do not establish device compatibility.
+SoftMatcha Search's original code is licensed under [MIT](LICENSE). The SoftMatcha 2 port, dependencies, and model data retain their own licenses; see the [third-party notices](licenses/THIRD_PARTY_NOTICES.md).
 
-Both models and the Japanese dictionary use about **135 MiB of disk space**
-when unpacked and require additional RAM. First-time indexing of a large vault
-can take over a minute. Later sessions restore checkpoints, but still load the
-models into memory. You can enable one language or use exact search alone.
+This README is adapted from [Omnisearch's README](https://github.com/scambier/obsidian-omnisearch/blob/e4a51ab52a2cd3924367ea9cf0bb439f83e62318/README.md) by Simon Cambier and contributors, and is licensed under [GPL-3.0](docs/OMNISEARCH-LICENSE.txt). Modified by Yuiga Wada on 2026-11-04 to describe SoftMatcha Search's installation, features, and licensing. The README license does not replace the licenses of the separately licensed plugin code or models.
 
-Semantic search uses word similarity within each language, rather than
-translation or document-level question answering. Queries are limited to 12
-semantic tokens. PDF/image OCR and Omnisearch's query syntax are not supported.
-See the [usage guide](docs/USAGE.md) for routing and fallback behavior.
+## Thanks
 
-## Privacy
-
-Search runs locally without uploading notes or sending telemetry. Imported
-models live in the plugin configuration folder. Index checkpoints include note
-text and positions and are stored in the app's IndexedDB. Read the
-[privacy guide](docs/PRIVACY.md) for storage and data flow details.
-
-## License
-
-Original code is licensed under [MIT](LICENSE). The SoftMatcha 2 port retains
-Apache-2.0 and attributed MIT portions. fastText models use CC BY-SA 3.0;
-Japanese dictionary data retains its upstream terms. Full texts and attribution
-are in [third-party notices](licenses/THIRD_PARTY_NOTICES.md) and [licenses](licenses/).
-
-## Acknowledgments
-
-Built on [SoftMatcha 2](https://github.com/softmatcha/softmatcha2),
-[fastText](https://fasttext.cc/), and [kuromoji.js](https://github.com/takuyaa/kuromoji.js).
-The README's organization takes inspiration from
-[Omnisearch](https://github.com/scambier/obsidian-omnisearch).
-This is an independent community integration.
+To the authors and contributors of [SoftMatcha 2](https://github.com/softmatcha/softmatcha2), [fastText](https://fasttext.cc/), [kuromoji.js](https://github.com/takuyaa/kuromoji.js), and [Omnisearch](https://github.com/scambier/obsidian-omnisearch) ❤
