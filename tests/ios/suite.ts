@@ -96,7 +96,6 @@ async function run() {
     ja: { path: "japanese.md", text: "日本の研究者が本を読んでいます。" },
   };
   for (const language of ["en", "ja"] as const) {
-    files.clear();
     config.autoDownloadModels = true;
     config.searchLanguages = [language];
     await ensure();
@@ -152,6 +151,48 @@ async function run() {
     } finally {
       engine.dispose();
     }
+  }
+  config.searchLanguages = ["ja", "en"];
+  const beforeCombined = requests.length;
+  await ensure();
+  assert(
+    requests.length === beforeCombined,
+    "Combined setup downloaded existing packs",
+  );
+  const documents = Object.values(fixture);
+  const combined = new WasmSearchEngine(
+    {
+      ...store,
+      vaultId: "ios-qa-combined",
+      binary: async (path: string) => new Uint8Array(files.get(path)!).buffer,
+      list: () =>
+        documents.map((item) => ({
+          path: item.path,
+          mtime: 1,
+          size: item.text.length,
+        })),
+      read: async (path: string) =>
+        documents.find((item) => item.path === path)!.text,
+    },
+    () =>
+      new Worker(
+        URL.createObjectURL(new Blob([source], { type: "text/javascript" })),
+      ),
+  );
+  try {
+    assert(await combined.prepare(config), "Combined models did not prepare");
+    for (const query of ["happy", "日本"]) {
+      const result = await combined.search(query, config);
+      assert(
+        !result.literalOnly && result.results.length > 0,
+        "Combined language search failed: " + query,
+      );
+    }
+    record(
+      "both languages enabled: shared files, model reuse and WASM queries: pass",
+    );
+  } finally {
+    combined.dispose();
   }
   record("iOS Simulator WebKit integration complete");
   finish(true);
