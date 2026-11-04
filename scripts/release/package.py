@@ -14,7 +14,6 @@ zip_path=out/'softmatcha-for-obsidian.zip'
 with ZipFile(zip_path,'w') as archive:
     for name in ['main.js','manifest.json','styles.css','LICENSE','README.md']:
         archive_file(archive,name,((out if name in ('main.js','styles.css') else root)/name).read_bytes())
-    archive_file(archive,'docs/OMNISEARCH-LICENSE.txt',(root/'docs/OMNISEARCH-LICENSE.txt').read_bytes())
     for file in sorted((root/'licenses').glob('*')):
         if file.is_file():archive_file(archive,'licenses/'+file.name,file.read_bytes())
 if args.models:

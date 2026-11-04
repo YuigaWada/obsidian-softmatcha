@@ -84,7 +84,7 @@ iOS・Android・Windows・LinuxのObsidian実機では未検証です。CIの検
 
 ## ライセンス
 
-独自コードは[MIT](../LICENSE)です。SoftMatcha 2移植部分はApache-2.0と一部MIT、
+独自コードと、このREADMEを含む独自ドキュメントは[MIT](../LICENSE)です。SoftMatcha 2移植部分はApache-2.0と一部MIT、
 fastTextモデルはCC BY-SA 3.0、日本語辞書は元の配布条件を維持します。
 [第三者ライセンス通知](../licenses/THIRD_PARTY_NOTICES.md)と[ライセンス全文](../licenses/)を参照してください。
 
@@ -92,5 +92,4 @@ fastTextモデルはCC BY-SA 3.0、日本語辞書は元の配布条件を維持
 
 [SoftMatcha 2](https://github.com/softmatcha/softmatcha2)、[fastText](https://fasttext.cc/)、
 [kuromoji.js](https://github.com/takuyaa/kuromoji.js)を使用しています。
-READMEの構成は[Omnisearch](https://github.com/scambier/obsidian-omnisearch)を参考にしています。
 本プラグインは独立したコミュニティによる実装です。
