@@ -1,7 +1,7 @@
 {
   "id": "softmatcha-search",
   "name": "SoftMatcha Search",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minAppVersion": "1.8.7",
   "description": "Find English and Japanese Markdown passages with local semantic search and highlighted matches.",
   "author": "Yuiga Wada",
