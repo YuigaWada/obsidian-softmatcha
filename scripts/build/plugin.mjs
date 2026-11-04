@@ -20,7 +20,9 @@ await build({
   outfile: "dist/main.js",
   banner: {
     js:
-      "/*\n" +
+      "/*\n--- SoftMatcha Search: original code (MIT) ---\n" +
+      readFileSync("LICENSE", "utf8").replaceAll("*/", "* /") +
+      "\n" +
       readFileSync("licenses/THIRD_PARTY_NOTICES.md", "utf8").replaceAll(
         "*/",
         "* /",
