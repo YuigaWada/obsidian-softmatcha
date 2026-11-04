@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "fake-indexeddb": "^6.2.7",
