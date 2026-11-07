@@ -125,3 +125,8 @@ export function resultCount(count: number, locale: UiLocale): string {
     ? `${count}件`
     : `${count} result${count === 1 ? "" : "s"}`;
 }
+export function moreMatches(count: number, locale: UiLocale): string {
+  return locale === "ja"
+    ? `ほか ${count} 件の一致`
+    : `${count} more match${count === 1 ? "" : "es"}`;
+}

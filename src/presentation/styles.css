@@ -59,3 +59,34 @@
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* One source line per row; long lines remain bounded on desktop and mobile. */
+.softmatcha-excerpt .softmatcha-preview-line {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.softmatcha-excerpt .softmatcha-preview-line:hover {
+  background: var(--background-modifier-hover);
+}
+.softmatcha-more-matches {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+}

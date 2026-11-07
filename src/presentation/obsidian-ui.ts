@@ -16,8 +16,8 @@ import type {
   UiLocale,
 } from "../domain/search";
 import { highlightRanges } from "../domain/search";
-import { messages, errorText, resultCount } from "./i18n";
-import { compactExcerpt } from "./excerpt";
+import { messages, errorText, resultCount, moreMatches } from "./i18n";
+import { groupHits, resultPreview, type GroupedHit } from "./result-preview";
 export interface SearchHost extends Plugin {
   config: SearchConfig;
   readonly warmState: string;
@@ -35,13 +35,15 @@ export interface SearchHost extends Plugin {
     onPartial?: (result: SearchResult) => void,
   ): Promise<SearchResult>;
 }
-export class Search extends SuggestModal<Hit> {
+export class Search extends SuggestModal<GroupedHit> {
   timer: number | undefined;
   generation = 0;
-  pending: ((x: Hit[]) => void) | undefined;
+  pending: ((x: GroupedHit[]) => void) | undefined;
   status: HTMLElement;
   closed = false;
   composing = false;
+  private previewQueue: (() => Promise<void>)[] = [];
+  private previewReads = 0;
   private completed: { query: string; result: SearchResult } | undefined;
   private showStatus(r: SearchResult) {
     this.status.setText(
@@ -76,9 +78,10 @@ export class Search extends SuggestModal<Hit> {
       this.inputEl.dispatchEvent(new Event("input"));
     });
   }
-  getSuggestions(query: string): Promise<Hit[]> {
+  getSuggestions(query: string): Promise<GroupedHit[]> {
     this.plugin.cancelSearch?.();
     const id = ++this.generation;
+    this.previewQueue = [];
     window.clearTimeout(this.timer);
     this.pending?.([]);
     this.pending = undefined;
@@ -90,7 +93,7 @@ export class Search extends SuggestModal<Hit> {
       const result = this.completed.result;
       this.completed = undefined;
       this.showStatus(result);
-      return Promise.resolve(result.results);
+      return Promise.resolve(groupHits(result.results));
     }
     this.completed = undefined;
     return new Promise((resolve) => {
@@ -116,7 +119,7 @@ export class Search extends SuggestModal<Hit> {
                 if (id === this.generation && !this.closed) {
                   partial = true;
                   this.showStatus(result);
-                  resolve(result.results);
+                  resolve(groupHits(result.results));
                 }
               },
             );
@@ -126,7 +129,7 @@ export class Search extends SuggestModal<Hit> {
                 this.completed = { query: query.trim(), result: r };
                 this.inputEl.dispatchEvent(new Event("input"));
               }
-              resolve(r.results);
+              resolve(groupHits(r.results));
             } else resolve([]);
           } catch (e) {
             if (id === this.generation && !this.closed)
@@ -139,27 +142,87 @@ export class Search extends SuggestModal<Hit> {
       }, 80);
     });
   }
-  renderSuggestion(hit: Hit, el: HTMLElement) {
+  renderSuggestion(hit: GroupedHit, el: HTMLElement) {
     el.createDiv({
       cls: "softmatcha-title",
       text: hit.path.replace(/\.md$/, ""),
     });
     const excerpt = el.createDiv({ cls: "softmatcha-excerpt" });
-    const display = compactExcerpt(
-      hit.kind === "title" ? this.plugin.labels.filename : hit.excerpt,
-      hit.match_ranges ?? [],
-    );
-    renderHighlighted(excerpt, display.text, display.ranges);
+    const render = (source?: string) => {
+      excerpt.empty();
+      if (!hit.matches.length) {
+        excerpt.setText(this.plugin.labels.filename);
+        return;
+      }
+      const preview = resultPreview(hit, source);
+      for (const row of preview.lines) {
+        const line = excerpt.createEl("button", {
+          cls: "softmatcha-preview-line",
+          attr: {
+            type: "button",
+            "aria-label": `${row.line + 1}: ${row.text}`,
+          },
+        });
+        line.tabIndex = -1;
+        renderHighlighted(line, row.text, row.ranges);
+        line.addEventListener("click", (event) => {
+          event.stopPropagation();
+          void this.openHit({ ...hit, line: row.line }, event);
+          this.close();
+        });
+      }
+      if (preview.remaining)
+        excerpt.createDiv({
+          cls: "softmatcha-more-matches",
+          text: moreMatches(preview.remaining, this.plugin.locale),
+        });
+    };
+    render();
+    // Fetch rendered previews, at most two notes at once. Source text is
+    // discarded after rendering five bounded lines; stale queries stop work.
+    const generation = this.generation;
+    if (hit.matches.length) {
+      this.previewQueue.push(async () => {
+        if (this.closed || generation !== this.generation || !el.isConnected)
+          return;
+        const file = this.app.vault.getAbstractFileByPath(hit.path);
+        if (!(file instanceof TFile)) return;
+        const source = await this.app.vault.cachedRead(file);
+        if (!this.closed && generation === this.generation && el.isConnected)
+          render(source);
+      });
+      window.setTimeout(() => this.drainPreviews(), 0);
+    }
+    const first = this.firstMatch(hit);
     el.createDiv({
       cls: "softmatcha-meta",
       text:
         this.plugin.locale === "ja"
-          ? `${hit.line + 1}行目 · 類似度 ${hit.score.toFixed(3)}`
-          : `Line ${hit.line + 1} · Similarity ${hit.score.toFixed(3)}`,
+          ? `${first.line + 1}行目 · 類似度 ${hit.score.toFixed(3)}`
+          : `Line ${first.line + 1} · Similarity ${hit.score.toFixed(3)}`,
     });
   }
-  onChooseSuggestion(hit: Hit, event: MouseEvent | KeyboardEvent) {
-    void this.openHit(hit, event);
+  private firstMatch(hit: GroupedHit): Hit {
+    return hit.matches.length
+      ? hit.matches.reduce((a, b) => (a.line <= b.line ? a : b))
+      : hit;
+  }
+  private drainPreviews() {
+    while (!this.closed && this.previewReads < 2 && this.previewQueue.length) {
+      const next = this.previewQueue.shift()!;
+      this.previewReads++;
+      void next()
+        .catch(() => {
+          /* Keep the search excerpt when a note disappears. */
+        })
+        .finally(() => {
+          this.previewReads--;
+          window.setTimeout(() => this.drainPreviews(), 0);
+        });
+    }
+  }
+  onChooseSuggestion(hit: GroupedHit, event: MouseEvent | KeyboardEvent) {
+    void this.openHit(this.firstMatch(hit), event);
   }
   async openHit(hit: Hit, event: MouseEvent | KeyboardEvent) {
     const f = this.app.vault.getAbstractFileByPath(hit.path);
@@ -186,6 +249,7 @@ export class Search extends SuggestModal<Hit> {
   onClose() {
     this.plugin.cancelSearch?.();
     this.closed = true;
+    this.previewQueue = [];
     this.completed = undefined;
     this.generation++;
     window.clearTimeout(this.timer);

@@ -7,6 +7,11 @@ function fixture(options = {}) {
     constructor() {
       this.listeners = {};
       this.children = [];
+      this.isConnected = true;
+    }
+    empty() {
+      this.children = [];
+      this.text = undefined;
     }
     createDiv(options = {}) {
       const child = new Element();
@@ -165,6 +170,11 @@ function fixture(options = {}) {
       configDir: ".obsidian",
       getName: () => "test",
       getMarkdownFiles: () => [],
+      getAbstractFileByPath: (path) =>
+        options.notes?.[path] === undefined
+          ? null
+          : Object.assign(new obsidian.TFile(), { path }),
+      cachedRead: async (file) => options.notes[file.path],
       on: (event, fn) => {
         vaultEvents.set(event, fn);
         return {};
@@ -226,25 +236,24 @@ test("only the actual matching substring gets an inline background", async () =>
   const root = new f.Element();
   const text = "😀<img src=x>金メダル受賞者です";
   const start = text.indexOf("金");
-  f.modal.renderSuggestion(
-    {
-      path: "研究.md",
-      line: 0,
-      score: 0.9,
-      excerpt: text,
-      match_ranges: [[start, start + 3]],
-    },
-    root,
-  );
+  const hit = {
+    path: "研究.md",
+    line: 0,
+    score: 0.9,
+    excerpt: text,
+    match_ranges: [[start, start + 3]],
+  };
+  f.modal.renderSuggestion({ ...hit, matches: [hit] }, root);
   const excerpt = root.children.find((x) => x.cls === "softmatcha-excerpt");
-  assert.equal(excerpt.children.filter((x) => x.tag === "mark").length, 1);
+  const row = excerpt.children.find((x) => x.tag === "button");
+  assert.equal(row.children.filter((x) => x.tag === "mark").length, 1);
   assert.equal(
-    excerpt.children.find((x) => x.tag === "mark").text,
+    row.children.find((x) => x.tag === "mark").text,
     "金メダル".slice(0, 3),
   );
-  assert.equal(excerpt.children.map((x) => x.text).join(""), text);
+  assert.equal(row.children.map((x) => x.text).join(""), text);
   assert.equal(
-    excerpt.children.some((x) => x.tag === "img"),
+    row.children.some((x) => x.tag === "img"),
     false,
   );
 });
@@ -262,28 +271,34 @@ test("local preparation starts at application layout readiness without opening a
 });
 
 test("blank excerpt lines are omitted without shifting Unicode highlights or source line numbers", async () => {
-  const f = fixture();
+  const text = "\r\n前文\r\n  \t\r\n\r\n😀金メダル\n\n後文\n";
+  const f = fixture({ notes: { "研究.md": "\n".repeat(30) + text } });
   await f.p.onload();
   f.p.command.callback();
   const root = new f.Element();
-  const text = "\r\n前文\r\n  \t\r\n\r\n😀金メダル\n\n後文\n";
   const start = text.indexOf("金");
-  f.modal.renderSuggestion(
-    {
-      path: "研究.md",
-      line: 34,
-      score: 1,
-      excerpt: text,
-      match_ranges: [[start, start + 4]],
-    },
-    root,
-  );
+  const hit = {
+    path: "研究.md",
+    line: 34,
+    score: 1,
+    excerpt: text,
+    match_ranges: [[start, start + 4]],
+  };
+  f.modal.renderSuggestion({ ...hit, matches: [hit] }, root);
+  await new Promise((resolve) => setTimeout(resolve, 20));
   const excerpt = root.children.find((x) => x.cls === "softmatcha-excerpt");
   assert.equal(
-    excerpt.children.map((x) => x.text).join(""),
+    excerpt.children
+      .map((row) => row.children.map((x) => x.text).join(""))
+      .join("\n"),
     "前文\n😀金メダル\n後文",
   );
-  assert.equal(excerpt.children.find((x) => x.tag === "mark").text, "金メダル");
+  assert.equal(
+    excerpt.children
+      .flatMap((row) => row.children)
+      .find((x) => x.tag === "mark").text,
+    "金メダル",
+  );
   assert.match(
     root.children.find((x) => x.cls === "softmatcha-meta").text,
     /35/,
