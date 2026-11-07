@@ -55,7 +55,17 @@ function packedMap(input: Uint8Array) {
   return { map, maxToken };
 }
 export function surfaceDictionary(files: Record<string, ArrayBuffer>) {
-  const raw = (name: string) => gunzipSync(new Uint8Array(files[name]));
+  // Mobile owns these transferred inputs. Drop each compressed buffer as
+  // soon as it is expanded, instead of retaining all of them until the end.
+  const raw = (name: string) => {
+    const input = files[name];
+    try {
+      return gunzipSync(new Uint8Array(input));
+    } finally {
+      releaseBuffer(input);
+      delete files[name];
+    }
+  };
   const records = (name: string, maximum: number) => {
     const bytes = raw(name);
     try {

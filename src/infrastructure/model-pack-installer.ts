@@ -1,4 +1,5 @@
 import { unzipSync } from "fflate";
+import { sha256 } from "@noble/hashes/sha2.js";
 import bundledCatalog from "../../resources/model-catalog.json";
 import { SearchFault, type SearchLanguage } from "../domain/search";
 import { releaseBuffer } from "./worker/mobile/buffers";
@@ -50,7 +51,7 @@ export async function validateModelPack(
     });
   } finally {
     // unzipSync gives each output its own buffer. Release the transferred ZIP
-    // before WebCrypto makes another copy of the largest unpacked file.
+    // before hashing the unpacked files.
     if (consumeInput) releaseBuffer(data);
   }
   if (!files["pack.json"]) throw new SearchFault("invalidPack");
@@ -83,8 +84,15 @@ export async function validateModelPack(
   for (const [name, entry] of expected) {
     const bytes = files[name];
     if (!bytes) throw new SearchFault("invalidPack");
-    const digest = await crypto.subtle.digest("SHA-256", fileBuffer(bytes));
-    const hash = [...new Uint8Array(digest)]
+    // The disposable Worker can hash the existing view directly. WebCrypto
+    // snapshots its input, adding a second ~60 MB vector buffer on iOS.
+    // Keep the asynchronous native path for callers outside that Worker.
+    const digest = consumeInput
+      ? sha256(bytes)
+      : new Uint8Array(
+          await crypto.subtle.digest("SHA-256", fileBuffer(bytes)),
+        );
+    const hash = [...digest]
       .map((v) => v.toString(16).padStart(2, "0"))
       .join("");
     if (hash !== entry.sha256) throw new SearchFault("invalidPack");

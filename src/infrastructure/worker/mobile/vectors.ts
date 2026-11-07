@@ -3,12 +3,14 @@ import type { ModelInput } from "../protocol";
 import { MobileStore } from "./store";
 import { releaseBuffer } from "./buffers";
 export const blockRows = 1024;
+const lookupRows = 4;
 interface Metadata {
   dimensions: number;
   size: number;
   vocabulary: Record<string, number>;
   lengths: Float32Array;
   blobPages?: boolean;
+  lookupRows?: number;
 }
 /** Disk pages are consumed individually; only small word and score caches persist. */
 export class DiskVectors {
@@ -84,9 +86,17 @@ export class DiskVectors {
               sum = Math.fround(sum + Math.fround(v * v));
             }
             lengths[next + row] = Math.fround(Math.sqrt(sum) + 1e-12);
+          }
+          // Keep small random-access records inline in IndexedDB, rather than
+          // doing filesystem-backed Blob reads for every word in a note.
+          // Four rows/record cuts initial writes without a large RAM batch.
+          for (let row = 0; row < count; row += lookupRows) {
             entries.push([
-              `${prefix}:word:${next + row}`,
-              page.slice(row * dimensions, (row + 1) * dimensions),
+              `${prefix}:lookup:${(next + row) / lookupRows}`,
+              page.slice(
+                row * dimensions,
+                Math.min(row + lookupRows, count) * dimensions,
+              ),
             ]);
           }
           await store.putMany(entries);
@@ -105,6 +115,7 @@ export class DiskVectors {
           vocabulary: JSON.parse(spec.vocabulary) as Record<string, number>,
           lengths,
           blobPages: true,
+          lookupRows,
         };
         await store.put(prefix, meta);
         finished = true;
@@ -159,11 +170,56 @@ export class DiskVectors {
         return row ? [[id, row] as const] : [];
       }),
     );
-    const missing = ids.filter((id) => !available.has(id));
-    const fetched = await this.store.getMany<Float32Array>(
-      missing.map((id) => `${this.prefix}:word:${id}`),
-    );
-    missing.forEach((id, i) => available.set(id, fetched[i]));
+    for (const id of ids)
+      if (!Number.isInteger(id) || id < 0 || id >= this.meta.size)
+        throw Error("Invalid vector row");
+    const missing = [...new Set(ids)].filter((id) => !available.has(id));
+    if (!this.meta.lookupRows) {
+      // Existing installations retain their per-word index; no model download
+      // or full cache rebuild is needed just to upgrade the plugin.
+      const fetched = await this.store.getMany<Float32Array>(
+        missing.map((id) => `${this.prefix}:word:${id}`),
+      );
+      missing.forEach((id, i) => available.set(id, fetched[i]));
+    } else {
+      const rows = this.meta.lookupRows;
+      if (rows !== lookupRows) throw Error("Invalid vector lookup layout");
+      const groups = new Map<number, number[]>();
+      for (const id of missing) {
+        const block = Math.floor(id / rows);
+        const group = groups.get(block) ?? [];
+        group.push(id);
+        groups.set(block, group);
+      }
+      const indexes = [...groups.keys()];
+      // <= 307,200 decoded bytes/batch for the shipped 300-dimensional model.
+      for (let start = 0; start < indexes.length; start += 64) {
+        const batch = indexes.slice(start, start + 64);
+        const values = await this.store.getMany<Float32Array>(
+          batch.map((block) => `${this.prefix}:lookup:${block}`),
+        );
+        try {
+          batch.forEach((block, i) => {
+            const page = values[i];
+            const count = Math.min(rows, this.meta.size - block * rows);
+            if (
+              !(page instanceof Float32Array) ||
+              page.length !== count * this.meta.dimensions
+            )
+              throw Error("Missing vector lookup block");
+            for (const id of groups.get(block)!) {
+              const offset = (id - block * rows) * this.meta.dimensions;
+              available.set(
+                id,
+                page.slice(offset, offset + this.meta.dimensions),
+              );
+            }
+          });
+        } finally {
+          for (const page of values) if (page) releaseBuffer(page);
+        }
+      }
+    }
     const evicted = new Set<Float32Array>();
     ids.forEach((id, i) => {
       const row = available.get(id);

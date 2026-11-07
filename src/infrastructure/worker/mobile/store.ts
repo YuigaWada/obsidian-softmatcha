@@ -63,11 +63,20 @@ export class MobileStore {
         const r = store.get(key);
         r.onsuccess = () => {
           values[i] = r.result as T;
+          r.onsuccess = null;
         };
       });
-      t.oncomplete = () => resolve(values);
-      t.onabort = t.onerror = () =>
+      const clear = () => {
+        t.oncomplete = t.onabort = t.onerror = null;
+      };
+      t.oncomplete = () => {
+        clear();
+        resolve(values);
+      };
+      t.onabort = t.onerror = () => {
+        clear();
         reject(t.error ?? Error("IndexedDB read failed"));
+      };
     });
   }
   async putMany(entries: [string, unknown][]): Promise<void> {
