@@ -74,3 +74,29 @@ or losing the app's IndexedDB requires rebuilding those checkpoints.
 On a device with limited memory, use one language or exact search alone.
 If a model cannot be used, check the search status and try a model pack made
 for your installed plugin version. See [privacy](PRIVACY.md) for storage details.
+
+## iOS background preparation
+
+On iOS, vector pages and note index sections are stored in IndexedDB. Only
+bounded working sets are loaded into the search Worker. Vector pages use Blob
+storage to avoid cloning large typed arrays on every read. Older cached pages
+are migrated once, with background work yielding between pages. Initial preparation
+can take several minutes; results are marked as preparing while coverage is
+incomplete. Later launches reuse the stored sections. Note changes are batched
+and only changed notes are read again. Searches take priority over background
+indexing, exact candidates appear before semantic results finish, obsolete
+queries are cancelled, and an unnecessary semantic pass is skipped when exact
+matches already fill the result limit. Background indexing pauses when
+the app is not visible. ZIP validation runs in a separate disposable Worker.
+Desktop and Android continue using the existing in-memory backend.
+
+IndexedDB is a device-local, rebuildable cache. It is not synced or backed up
+by the plugin. These changes do not establish a 32 MiB total memory limit:
+the Japanese dictionary and initial model import still require more memory.
+iOS uses the same Japanese word segmentation without loading unused part-of-speech
+metadata, trims unused trie capacity, and stores only the token fields needed
+for segmentation. Unicode position tables, unknown-word grouping boundaries,
+and a bounded pool of lattice nodes are reused. Completed reads wait for their
+IndexedDB transaction to finish; consumed, exclusively owned buffers are detached
+when WebKit supports it. Initial ZIP download and validation still have large
+transient allocations and are not covered by a 32 MiB peak guarantee.

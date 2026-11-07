@@ -1,5 +1,111 @@
 /* @ts-self-types="./softmatcha_wasm.d.ts" */
 
+/**
+ * A single bounded disk-backed shard; no resident vector model.
+ */
+export class MobileShard {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MobileShardFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_mobileshard_free(ptr, 0);
+    }
+    /**
+     * @param {string} documents
+     * @param {number} size
+     * @param {number} dimensions
+     * @param {Uint32Array | number[]} ids
+     * @param {Float32Array | number[]} vectors
+     * @returns {Uint8Array}
+     */
+    static build(documents, size, dimensions, ids, vectors) {
+        const val4 = +size;
+        const val5 = +dimensions;
+        let ptr0, len0, ptr1, len1, ptr2, len2;
+        try {
+            ptr0 = passStringToWasm0(documents, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passArray32ToWasm0(ids, wasm.__wbindgen_malloc);
+            len1 = WASM_VECTOR_LEN;
+            ptr2 = passArrayF32ToWasm0(vectors, wasm.__wbindgen_malloc);
+            len2 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr2) { wasm.__wbindgen_free(ptr2, len2 * 4, 4); }
+            if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 4, 4); }
+            if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        const ret = wasm.mobileshard_build(ptr0, len0, val4, val5, ptr1, len1, ptr2, len2);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v6 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v6;
+    }
+    /**
+     * @param {Uint8Array | number[]} bytes
+     * @param {number} size
+     */
+    constructor(bytes, size) {
+        const val2 = +size;
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.mobileshard_new(ptr0, len0, val2);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0];
+        MobileShardFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {Uint32Array | number[]} query
+     * @param {Float32Array | number[]} scores
+     * @param {number} minimum
+     * @param {number} limit
+     * @param {number} budget_ms
+     * @returns {string}
+     */
+    search(query, scores, minimum, limit, budget_ms) {
+        let deferred7_0;
+        let deferred7_1;
+        try {
+            const val3 = +minimum;
+            const val4 = +limit;
+            const val5 = +budget_ms;
+            let ptr0, len0, ptr1, len1;
+            try {
+                ptr0 = passArray32ToWasm0(query, wasm.__wbindgen_malloc);
+                len0 = WASM_VECTOR_LEN;
+                ptr1 = passArrayF32ToWasm0(scores, wasm.__wbindgen_malloc);
+                len1 = WASM_VECTOR_LEN;
+            } catch (e) {
+                if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 4, 4); }
+                if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 4, 4); }
+                throw e;
+            }
+            const ret = wasm.mobileshard_search(this.__wbg_ptr, ptr0, len0, ptr1, len1, val3, val4, val5);
+            var ptr6 = ret[0];
+            var len6 = ret[1];
+            if (ret[3]) {
+                ptr6 = 0; len6 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred7_0 = ptr6;
+            deferred7_1 = len6;
+            return getStringFromWasm0(ptr6, len6);
+        } finally {
+            wasm.__wbindgen_free(deferred7_0, deferred7_1, 1);
+        }
+    }
+}
+if (Symbol.dispose) MobileShard.prototype[Symbol.dispose] = MobileShard.prototype.free;
+
 export class SearchEngine {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -124,6 +230,42 @@ export class SearchEngine {
     }
 }
 if (Symbol.dispose) SearchEngine.prototype[Symbol.dispose] = SearchEngine.prototype.free;
+
+/**
+ * @param {Float32Array | number[]} vectors
+ * @param {Float32Array | number[]} lengths
+ * @param {Float32Array | number[]} queries
+ * @param {Float32Array | number[]} query_lengths
+ * @param {number} dimensions
+ * @returns {Float32Array}
+ */
+export function vector_scores(vectors, lengths, queries, query_lengths, dimensions) {
+    const val5 = +dimensions;
+    let ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3;
+    try {
+        ptr0 = passArrayF32ToWasm0(vectors, wasm.__wbindgen_malloc);
+        len0 = WASM_VECTOR_LEN;
+        ptr1 = passArrayF32ToWasm0(lengths, wasm.__wbindgen_malloc);
+        len1 = WASM_VECTOR_LEN;
+        ptr2 = passArrayF32ToWasm0(queries, wasm.__wbindgen_malloc);
+        len2 = WASM_VECTOR_LEN;
+        ptr3 = passArrayF32ToWasm0(query_lengths, wasm.__wbindgen_malloc);
+        len3 = WASM_VECTOR_LEN;
+    } catch (e) {
+        if (ptr3) { wasm.__wbindgen_free(ptr3, len3 * 4, 4); }
+        if (ptr2) { wasm.__wbindgen_free(ptr2, len2 * 4, 4); }
+        if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 4, 4); }
+        if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 4, 4); }
+        throw e;
+    }
+    const ret = wasm.vector_scores(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, val5);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v6 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v6;
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -178,6 +320,9 @@ function __wbg_get_imports() {
     };
 }
 
+const MobileShardFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_mobileshard_free(ptr, 1));
 const SearchEngineFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_searchengine_free(ptr, 1));
@@ -186,6 +331,11 @@ function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
     wasm.__wbindgen_externrefs.set(idx, obj);
     return idx;
+}
+
+function getArrayF32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU8FromWasm0(ptr, len) {

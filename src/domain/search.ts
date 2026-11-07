@@ -27,6 +27,8 @@ export interface SearchResult {
   message?: string;
   mode?: "wasm";
   literalOnly?: "unknown" | "disabled" | "unavailable";
+  indexing?: boolean;
+  pendingSemantic?: boolean;
 }
 export const defaults: SearchConfig = {
   uiLanguage: "auto",

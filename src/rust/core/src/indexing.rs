@@ -18,6 +18,9 @@ impl Shard {
         bincode::serialize(self).map_err(|e| e.to_string())
     }
     pub fn decode(bytes: &[u8], model: &Model) -> Result<Self, String> {
+        Self::decode_for_size(bytes, model.size)
+    }
+    pub fn decode_for_size(bytes: &[u8], size: usize) -> Result<Self, String> {
         use bincode::Options;
         let shard: Self = bincode::DefaultOptions::new()
             .with_fixint_encoding()
@@ -29,12 +32,12 @@ impl Shard {
         if n > 4_000_000
             || shard.references.len() != n
             || shard.sa.len() != n
-            || shard.norm.len() != model.size
+            || shard.norm.len() != size
             || shard.rough.len() < 5
             || shard.rough.len() % 5 != 0
             || shard.index.bytes.len() % 32 != 0
             || shard.sa.iter().any(|p| *p >= n)
-            || shard.ids.iter().any(|i| *i as usize >= model.size)
+            || shard.ids.iter().any(|i| *i as usize >= size)
         {
             return Err("Invalid cached index".into());
         }
@@ -55,10 +58,45 @@ impl Shard {
     }
 
     pub fn build(documents: Vec<Document>, model: &Model) -> Result<Self, String> {
-        let unknown = (model.size - 1) as u32;
+        Self::build_with_norm(documents, model.size, |freq| whitening_norm(model, freq))
+    }
+    pub fn build_compact(
+        documents: Vec<Document>,
+        size: usize,
+        dimensions: usize,
+        ids: Vec<u32>,
+        vectors: Vec<f32>,
+    ) -> Result<Self, String> {
+        if size < 2
+            || size > 65536
+            || ids.is_empty()
+            || ids.iter().any(|&i| i as usize >= size)
+            || ids.windows(2).any(|v| v[0] >= v[1])
+            || dimensions == 0
+            || vectors.len() != ids.len() * dimensions
+        {
+            return Err("Invalid compact model".into());
+        }
+        let model = Model::new(vectors, dimensions)?;
+        Self::build_with_norm(documents, size, |freq| {
+            let local_freq: Vec<u64> = ids.iter().map(|&id| freq[id as usize]).collect();
+            let local = whitening_norm_compact(&model, &local_freq);
+            let mut norm = vec![1e10; size];
+            for (i, &id) in ids.iter().enumerate() {
+                norm[id as usize] = local[i];
+            }
+            norm
+        })
+    }
+    fn build_with_norm(
+        documents: Vec<Document>,
+        size: usize,
+        norm: impl FnOnce(&[u64]) -> Vec<f32>,
+    ) -> Result<Self, String> {
+        let unknown = (size - 1) as u32;
         let mut ids = Vec::new();
         let mut references = Vec::new();
-        let mut freq = vec![0u64; model.size];
+        let mut freq = vec![0u64; size];
         for (di, doc) in documents.iter().enumerate() {
             if doc.path.starts_with('/') || doc.path.split('/').any(|p| p == "..") {
                 return Err("Invalid note path".into());
@@ -121,7 +159,7 @@ impl Shard {
             u64::MAX,
             (bytes.len() / 32) as u64,
         ]);
-        let norm = whitening_norm(model, &freq);
+        let norm = norm(&freq);
         Ok(Self {
             documents,
             ids,
@@ -132,9 +170,8 @@ impl Shard {
             norm,
         })
     }
-    pub(crate) fn search(
+    pub fn search_with_scores(
         &self,
-        model: &Model,
         query: &[u64],
         scores: &Array2<f32>,
         minimum: f32,
@@ -223,7 +260,6 @@ impl Shard {
                 });
             }
         }
-        let _ = model;
         hits
     }
 }
@@ -264,6 +300,77 @@ fn whitening_norm(model: &Model, freq: &[u64]) -> Vec<f32> {
     norms
 }
 
+// Equivalent Mahalanobis norms via the smaller Gram matrix for small shards.
+// Avoid a 300x300 eigendecomposition when only a few distinct words occur.
+fn whitening_norm_compact(model: &Model, freq: &[u64]) -> Vec<f32> {
+    let present: Vec<usize> = freq
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| **f > 0)
+        .map(|(i, _)| i)
+        .collect();
+    if present.len() >= model.dimensions {
+        return whitening_norm(model, freq);
+    }
+    let mut norms = vec![1e10; model.size];
+    if present.is_empty() {
+        return norms;
+    }
+    if present.len() == 1 {
+        norms[present[0]] = 0.;
+        return norms;
+    }
+    let total: f64 = present.iter().map(|&i| freq[i] as f64).sum();
+    let p: Vec<f64> = present.iter().map(|&i| freq[i] as f64 / total).collect();
+    let mut mean = vec![0.; model.dimensions];
+    for (row, &i) in present.iter().enumerate() {
+        for j in 0..model.dimensions {
+            mean[j] += p[row] * model.vectors[i * model.dimensions + j] as f64;
+        }
+    }
+    let weighted = DMatrix::from_fn(present.len(), model.dimensions, |row, j| {
+        (model.vectors[present[row] * model.dimensions + j] as f64 - mean[j]) * p[row].sqrt()
+    });
+    let mut eigenvalues: Vec<f64> = (&weighted * weighted.transpose())
+        .symmetric_eigenvalues()
+        .iter()
+        .copied()
+        .collect();
+    eigenvalues.sort_by(f64::total_cmp);
+    // Centering creates one null direction. For full affine rank, leverage
+    // gives exactly (1-p)/p. Use the original algorithm for degenerate data.
+    if eigenvalues[1] <= eigenvalues.last().unwrap().abs() * 1e-7 {
+        return whitening_norm(model, freq);
+    }
+    for (row, &id) in present.iter().enumerate() {
+        norms[id] = ((1. - p[row]) / p[row]) as f32;
+    }
+
+    norms
+}
+
+#[cfg(test)]
+mod compact_tests {
+    use super::*;
+    #[test]
+    fn gram_norm_matches_full_covariance() {
+        let mut seed = 123456789u32;
+        let vectors = (0..8 * 300)
+            .map(|_| {
+                seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+                ((seed >> 8) as f32 / 16777216. - 0.5) * 0.2
+            })
+            .collect();
+        let model = Model::new(vectors, 300).unwrap();
+        let freq = vec![3, 0, 4, 1, 8, 2, 0, 5];
+        let full = whitening_norm(&model, &freq);
+        let compact = whitening_norm_compact(&model, &freq);
+        for (a, b) in full.iter().zip(compact) {
+            assert!((a - b).abs() <= 0.005 * a.abs().max(1.), "{a} != {b}");
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct PortableIndexRepository {
     pub shards: BTreeMap<String, Shard>,
@@ -281,7 +388,7 @@ impl crate::application::IndexRepository for PortableIndexRepository {
     }
     fn search(
         &self,
-        model: &Model,
+        _model: &Model,
         query: &[u64],
         scores: &Array2<f32>,
         minimum: f32,
@@ -295,8 +402,7 @@ impl crate::application::IndexRepository for PortableIndexRepository {
             if remaining <= 0. {
                 break;
             }
-            hits.extend(shard.search(
-                model,
+            hits.extend(shard.search_with_scores(
                 query,
                 scores,
                 minimum,

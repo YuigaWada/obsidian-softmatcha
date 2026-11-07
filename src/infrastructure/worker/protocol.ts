@@ -10,6 +10,7 @@ export interface ModelInput {
 interface CommonInit {
   dictionaries: Record<string, ArrayBuffer>;
   vault: string;
+  mobile?: boolean;
 }
 export type InitPayload = CommonInit &
   (
@@ -22,7 +23,30 @@ export type InitPayload = CommonInit &
         version: string;
       }
   );
+import type { DocumentVersion } from "../wasm-search-engine";
+import type { Catalog } from "../model-pack-installer";
 export type WorkerRequest =
+  | { id: number; type: "visibility"; payload: boolean }
+  | {
+      id: number;
+      type: "unpack";
+      payload: { data: ArrayBuffer; catalog?: Catalog };
+    }
+  | { id: number; type: "cancel"; payload?: never }
+  | {
+      id: number;
+      type: "model-check";
+      payload: { language: SearchLanguage; version: string };
+    }
+  | { id: number; type: "model"; payload: ModelInput }
+  | { id: number; type: "dictionary"; payload: Record<string, ArrayBuffer> }
+  | { id: number; type: "sync-plan"; payload: DocumentVersion[] }
+  | {
+      id: number;
+      type: "sync-note";
+      payload: { file: DocumentVersion; text: string };
+    }
+  | { id: number; type: "sync-commit"; payload: string[] }
   | { id: number; type: "init"; payload: InitPayload }
   | { id: number; type: "sync"; payload: Note[] }
   | {
@@ -33,6 +57,7 @@ export type WorkerRequest =
 export interface WorkerReply {
   id: number;
   value?: unknown;
+  partial?: boolean;
   error?: string;
   code?: string;
 }

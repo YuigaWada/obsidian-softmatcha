@@ -28,7 +28,12 @@ export interface SearchHost extends Plugin {
   readonly modelTransferActive: boolean;
   readonly modelStatus: string;
   onModelStatusChange(listener: () => void): () => void;
-  query(query: string, isCurrent?: () => boolean): Promise<SearchResult>;
+  cancelSearch?(): void;
+  query(
+    query: string,
+    isCurrent?: () => boolean,
+    onPartial?: (result: SearchResult) => void,
+  ): Promise<SearchResult>;
 }
 export class Search extends SuggestModal<Hit> {
   timer: number | undefined;
@@ -37,6 +42,15 @@ export class Search extends SuggestModal<Hit> {
   status: HTMLElement;
   closed = false;
   composing = false;
+  private completed: { query: string; result: SearchResult } | undefined;
+  private showStatus(r: SearchResult) {
+    this.status.setText(
+      r.mode
+        ? `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2${r.mode === "wasm" ? " WASM" : ""}${r.literalOnly ? ` · ${this.plugin.labels[r.literalOnly]}` : ""}${r.indexing ? ` · ${this.plugin.labels.indexing}` : ""}${r.pendingSemantic ? ` · ${this.plugin.labels.searching}` : ""}`
+        : (r.message ??
+            `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2`),
+    );
+  }
   constructor(
     app: App,
     private plugin: SearchHost,
@@ -63,12 +77,22 @@ export class Search extends SuggestModal<Hit> {
     });
   }
   getSuggestions(query: string): Promise<Hit[]> {
+    this.plugin.cancelSearch?.();
     const id = ++this.generation;
     window.clearTimeout(this.timer);
     this.pending?.([]);
     this.pending = undefined;
-    if (!query.trim() || this.composing || this.closed)
+    if (!query.trim() || this.composing || this.closed) {
+      this.completed = undefined;
       return Promise.resolve([]);
+    }
+    if (this.completed?.query === query.trim()) {
+      const result = this.completed.result;
+      this.completed = undefined;
+      this.showStatus(result);
+      return Promise.resolve(result.results);
+    }
+    this.completed = undefined;
     return new Promise((resolve) => {
       this.pending = resolve;
       this.timer = window.setTimeout(() => {
@@ -83,18 +107,25 @@ export class Search extends SuggestModal<Hit> {
             return;
           }
           this.status.setText(this.plugin.labels.searching);
+          let partial = false;
           try {
             const r = await this.plugin.query(
               query.trim(),
               () => id === this.generation && !this.closed,
+              (result) => {
+                if (id === this.generation && !this.closed) {
+                  partial = true;
+                  this.showStatus(result);
+                  resolve(result.results);
+                }
+              },
             );
             if (id === this.generation && !this.closed) {
-              this.status.setText(
-                r.mode
-                  ? `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2${r.mode === "wasm" ? " WASM" : ""}${r.literalOnly ? ` · ${this.plugin.labels[r.literalOnly]}` : ""}`
-                  : (r.message ??
-                      `${resultCount(r.results.length, this.plugin.locale)} · SoftMatcha 2`),
-              );
+              this.showStatus(r);
+              if (partial) {
+                this.completed = { query: query.trim(), result: r };
+                this.inputEl.dispatchEvent(new Event("input"));
+              }
               resolve(r.results);
             } else resolve([]);
           } catch (e) {
@@ -153,7 +184,9 @@ export class Search extends SuggestModal<Hit> {
     await leaf.openFile(f, { eState: { line: hit.line } });
   }
   onClose() {
+    this.plugin.cancelSearch?.();
     this.closed = true;
+    this.completed = undefined;
     this.generation++;
     window.clearTimeout(this.timer);
     this.pending?.([]);

@@ -1,3 +1,5 @@
+import { validateModelPack } from "../model-pack-installer";
+import { MobileRuntime } from "./mobile/runtime";
 import {
   initSync,
   SearchEngine,
@@ -209,8 +211,42 @@ async function execute(request: WorkerRequest): Promise<unknown> {
   }
   throw Error("Unknown worker request");
 }
+let mobile: MobileRuntime | undefined;
 let tail = Promise.resolve();
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
+  if (event.data.type === "unpack") {
+    const { id, payload } = event.data;
+    void validateModelPack(payload.data, payload.catalog, true)
+      .then((value) => {
+        const buffers = [
+          ...new Set(
+            Object.values(value.files).map(
+              (bytes) => bytes.buffer as ArrayBuffer,
+            ),
+          ),
+        ];
+        (
+          self as unknown as {
+            postMessage(message: unknown, transfer: Transferable[]): void;
+          }
+        ).postMessage({ id, value }, buffers);
+      })
+      .catch((error: unknown) =>
+        self.postMessage({
+          id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    return;
+  }
+  if (event.data.type === "init" && event.data.payload.mobile) {
+    mobile?.close();
+    mobile = new MobileRuntime();
+  }
+  if (mobile) {
+    mobile.handle(event.data);
+    return;
+  }
   const { id } = event.data;
   tail = tail.then(async () => {
     try {

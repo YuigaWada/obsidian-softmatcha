@@ -1,7 +1,9 @@
 import { unzipSync } from "fflate";
 import bundledCatalog from "../../resources/model-catalog.json";
 import { SearchFault, type SearchLanguage } from "../domain/search";
+import { releaseBuffer } from "./worker/mobile/buffers";
 export interface AssetStore {
+  /** Resolve after persistence; the caller may then detach its input buffer. */
   write(path: string, data: ArrayBuffer): Promise<void>;
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
@@ -26,23 +28,31 @@ interface Pack {
 export async function validateModelPack(
   data: ArrayBuffer,
   catalog: Catalog = bundledCatalog,
+  consumeInput = false,
 ): Promise<{ files: Record<string, Uint8Array>; languages: SearchLanguage[] }> {
   if (data.byteLength > 160 * 1024 * 1024) throw new SearchFault("invalidPack");
   let total = 0;
-  const files = unzipSync(new Uint8Array(data), {
-    filter(file) {
-      if (file.name === "pack.json") {
-        if (file.originalSize > 1024) throw new SearchFault("invalidPack");
+  let files: Record<string, Uint8Array>;
+  try {
+    files = unzipSync(new Uint8Array(data), {
+      filter(file) {
+        if (file.name === "pack.json") {
+          if (file.originalSize > 1024) throw new SearchFault("invalidPack");
+          return true;
+        }
+        const expected = catalog.files[file.name];
+        if (!expected || file.originalSize !== expected.size)
+          throw new SearchFault("invalidPack");
+        total += file.originalSize;
+        if (total > 180 * 1024 * 1024) throw new SearchFault("invalidPack");
         return true;
-      }
-      const expected = catalog.files[file.name];
-      if (!expected || file.originalSize !== expected.size)
-        throw new SearchFault("invalidPack");
-      total += file.originalSize;
-      if (total > 180 * 1024 * 1024) throw new SearchFault("invalidPack");
-      return true;
-    },
-  });
+      },
+    });
+  } finally {
+    // unzipSync gives each output its own buffer. Release the transferred ZIP
+    // before WebCrypto makes another copy of the largest unpacked file.
+    if (consumeInput) releaseBuffer(data);
+  }
   if (!files["pack.json"]) throw new SearchFault("invalidPack");
   const pack = JSON.parse(new TextDecoder().decode(files["pack.json"])) as Pack;
   if (
@@ -86,6 +96,9 @@ export class ModelPackInstaller {
   constructor(
     private store: AssetStore,
     private catalog: Catalog = bundledCatalog,
+    private validate: typeof validateModelPack = validateModelPack,
+    private active: () => boolean = () => true,
+    private consumeBuffers = false,
   ) {}
   async install(
     data: ArrayBuffer,
@@ -93,30 +106,42 @@ export class ModelPackInstaller {
   ): Promise<SearchLanguage[]> {
     let pack: Awaited<ReturnType<typeof validateModelPack>>;
     try {
-      pack = await validateModelPack(data, this.catalog);
+      pack = await this.validate(data, this.catalog);
     } catch {
       throw new SearchFault("invalidPack");
     }
-    if (
-      expectedLanguage &&
-      (pack.languages.length !== 1 || pack.languages[0] !== expectedLanguage)
-    )
-      throw new SearchFault("invalidPack");
-    // Validate the whole archive before any write; publish manifest last.
-    for (const name of Object.keys(pack.files).sort(
-      (a, b) => Number(a === "manifest.json") - Number(b === "manifest.json"),
-    )) {
-      const bytes = pack.files[name];
-      const parts = name.split("/");
-      parts.pop();
-      let path = "";
-      for (const part of parts) {
-        path = path ? `${path}/${part}` : part;
-        if (!(await this.store.exists(path))) await this.store.mkdir(path);
+    try {
+      if (
+        expectedLanguage &&
+        (pack.languages.length !== 1 || pack.languages[0] !== expectedLanguage)
+      )
+        throw new SearchFault("invalidPack");
+      // Validate the whole archive before any write; publish manifest last.
+      for (const name of Object.keys(pack.files).sort(
+        (a, b) => Number(a === "manifest.json") - Number(b === "manifest.json"),
+      )) {
+        if (!this.active()) throw new SearchFault("downloadCancelled");
+        const bytes = pack.files[name];
+        const parts = name.split("/");
+        parts.pop();
+        let path = "";
+        for (const part of parts) {
+          path = path ? `${path}/${part}` : part;
+          if (!(await this.store.exists(path))) await this.store.mkdir(path);
+        }
+        if (!this.active()) throw new SearchFault("downloadCancelled");
+        const buffer = fileBuffer(bytes);
+        try {
+          await this.store.write(name, buffer);
+        } finally {
+          if (this.consumeBuffers) releaseBuffer(buffer);
+        }
+        delete pack.files[name];
       }
-      await this.store.write(name, fileBuffer(bytes));
-      delete pack.files[name];
+      return pack.languages;
+    } finally {
+      if (this.consumeBuffers)
+        for (const bytes of Object.values(pack.files)) releaseBuffer(bytes);
     }
-    return pack.languages;
   }
 }

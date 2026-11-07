@@ -22,7 +22,10 @@ This is an independent Obsidian integration, not an official SoftMatcha product.
 ## JavaScript and WebAssembly dependencies
 
 - [kuromoji.js](https://github.com/takuyaa/kuromoji.js), Takuya Asano and Atilika
-  contributors: Apache-2.0.
+  contributors: Apache-2.0. The iOS surface lattice builder is adapted from
+  kuromoji.js: it reuses Unicode positions and unknown-word grouping boundaries
+  instead of rebuilding suffix position tables. Its source retains the original
+  copyright and Apache-2.0 notice.
 - [doublearray](https://github.com/takuyaa/doublearray), Takuya Asano: MIT.
 - [fflate](https://github.com/101arrowz/fflate), Arjun Barrett: MIT.
 - kuromoji's package dependencies async, lodash, and zlibjs retain their

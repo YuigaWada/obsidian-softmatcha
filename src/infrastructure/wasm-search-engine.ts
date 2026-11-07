@@ -30,28 +30,36 @@ export class WasmSearchEngine implements SearchEngine {
   private worker: Worker | undefined;
   private pending = new Map<
     number,
-    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+    {
+      resolve: (value: unknown) => void;
+      reject: (error: Error) => void;
+      onPartial?: (value: unknown) => void;
+    }
   >();
   private id = 0;
   private initial: Promise<void> | undefined;
   private generation = "";
   private synchronization: Promise<boolean> | undefined;
   private stopped = false;
+  private resync = false;
+  private active = true;
   private languages: SearchConfig["searchLanguages"] = ["ja", "en"];
   constructor(
     private resources: LocalResources,
     private createWorker: () => Worker,
+    private mobile = false,
   ) {}
   private call(
     type: string,
     payload: unknown,
     transfer: Transferable[] = [],
+    onPartial?: (value: unknown) => void,
   ): Promise<unknown> {
     if (this.stopped || !this.worker)
       return Promise.reject(new SearchFault("engineStopped"));
     const id = ++this.id;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      this.pending.set(id, { resolve, reject, onPartial });
       try {
         this.worker!.postMessage({ id, type, payload }, transfer);
       } catch (error) {
@@ -78,6 +86,17 @@ export class WasmSearchEngine implements SearchEngine {
       },
     };
     const models: ModelInput[] = [];
+    const loaded = new Set<SearchConfig["searchLanguages"][number]>();
+    if (this.mobile) {
+      this.connectWorker();
+      await this.call("init", {
+        models: [],
+        dictionaries: {},
+        vault: this.resources.vaultId,
+        mobile: true,
+      });
+      this.setActive(this.active);
+    }
     for (const language of requested) {
       const spec = specs[language];
       if (!spec) continue;
@@ -88,23 +107,60 @@ export class WasmSearchEngine implements SearchEngine {
           !(await this.resources.exists(`${prefix}vocab.json`)))
       )
         continue;
-      models.push({
+      if (
+        this.mobile &&
+        (await this.call("model-check", { language, version: spec.version }))
+      ) {
+        loaded.add(language);
+        continue;
+      }
+      loaded.add(language);
+      const model: ModelInput = {
         language,
         vectors: await this.resources.binary(`${prefix}vectors.f32`),
         vocabulary: await this.resources.text(`${prefix}vocab.json`),
         dimensions: spec.dimensions,
         version: spec.version,
-      });
+      };
+      if (this.mobile) await this.call("model", model, [model.vectors]);
+      else models.push(model);
     }
     const dictionaries: Record<string, ArrayBuffer> = {};
-    if (models.some((model) => model.language === "ja"))
-      for (const name of manifest.dictionaries)
+    if (
+      this.mobile
+        ? loaded.has("ja")
+        : models.some((model) => model.language === "ja")
+    )
+      for (const name of manifest.dictionaries) {
+        if (this.mobile && (name === "tid_pos" || name === "unk_pos")) continue;
         dictionaries[name] = await this.resources.binary(`dict/${name}.dat.gz`);
+      }
     if (this.stopped) return;
+    if (this.mobile) {
+      if (Object.keys(dictionaries).length)
+        await this.call(
+          "dictionary",
+          dictionaries,
+          Object.values(dictionaries),
+        );
+      return;
+    }
+    this.connectWorker();
+    await this.call(
+      "init",
+      { models, dictionaries, vault: this.resources.vaultId },
+      [...models.map((model) => model.vectors), ...Object.values(dictionaries)],
+    );
+  }
+  private connectWorker() {
     this.worker = this.createWorker();
     this.worker.onmessage = (event: MessageEvent<WorkerReply>) => {
       const p = this.pending.get(event.data.id);
       if (!p) return;
+      if (event.data.partial) {
+        p.onPartial?.(event.data.value);
+        return;
+      }
       this.pending.delete(event.data.id);
       event.data.error
         ? p.reject(
@@ -123,22 +179,23 @@ export class WasmSearchEngine implements SearchEngine {
       this.initial = undefined;
       this.generation = "";
     };
-    await this.call(
-      "init",
-      {
-        models,
-        dictionaries,
-        vault: this.resources.vaultId,
-      },
-      [...models.map((model) => model.vectors), ...Object.values(dictionaries)],
-    );
   }
   prepare(config: Readonly<SearchConfig>): Promise<boolean> {
     this.languages = [...(config.searchLanguages ?? ["ja", "en"])];
-    if (!this.synchronization)
-      this.synchronization = this.synchronize().finally(() => {
-        this.synchronization = undefined;
-      });
+    if (this.synchronization) {
+      if (this.mobile) this.resync = true;
+      return this.synchronization;
+    }
+    this.synchronization = (async () => {
+      let ready = false;
+      do {
+        this.resync = false;
+        ready = await this.synchronize();
+      } while (this.mobile && this.resync && !this.stopped);
+      return ready;
+    })().finally(() => {
+      this.synchronization = undefined;
+    });
     return this.synchronization;
   }
   private async synchronize(): Promise<boolean> {
@@ -157,6 +214,23 @@ export class WasmSearchEngine implements SearchEngine {
       .sort((a, b) => a.path.localeCompare(b.path));
     const generation = JSON.stringify(files);
     if (generation === this.generation) return true;
+    if (this.mobile) {
+      const needed = new Set((await this.call("sync-plan", files)) as string[]);
+      for (const file of files) {
+        if (this.stopped) return false;
+        if (!needed.has(file.path)) continue;
+        const text = await this.resources.read(file.path);
+        if (this.stopped) return false;
+        await this.call("sync-note", { file, text });
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+      }
+      await this.call(
+        "sync-commit",
+        files.map((f) => f.path),
+      );
+      this.generation = generation;
+      return true;
+    }
     const documents = [];
     for (const file of files) {
       if (this.stopped) return false;
@@ -172,14 +246,17 @@ export class WasmSearchEngine implements SearchEngine {
   async search(
     query: string,
     config: Readonly<SearchConfig>,
+    onPartial?: (result: SearchResult) => void,
   ): Promise<SearchResult> {
     // Bootstrap is normally already running from application startup.
-    if (!this.initial || !this.generation) await this.prepare(config);
+    if (this.mobile) {
+      if (!this.initial) void this.prepare(config).catch(() => {});
+      await this.initial;
+    } else if (!this.initial || !this.generation) await this.prepare(config);
     else await this.initial;
-    const result = (await this.call("search", {
-      query,
-      config,
-    })) as SearchResult;
+    const result = (await this.call("search", { query, config }, [], (value) =>
+      onPartial?.(value as SearchResult),
+    )) as SearchResult;
     if (
       result.literalOnly === "disabled" &&
       config.searchLanguages.includes(
@@ -190,6 +267,15 @@ export class WasmSearchEngine implements SearchEngine {
     )
       result.literalOnly = "unavailable";
     return result;
+  }
+  setActive(active: boolean): void {
+    this.active = active;
+    if (this.mobile && this.worker)
+      this.worker.postMessage({ id: 0, type: "visibility", payload: active });
+  }
+  cancel(): void {
+    if (this.mobile && this.worker)
+      this.worker.postMessage({ id: 0, type: "cancel" });
   }
   dispose(): void {
     this.stopped = true;

@@ -1,4 +1,4 @@
-import { type App } from "obsidian";
+import { Platform, type App } from "obsidian";
 import { SearchSession } from "../application/search-session";
 import { WasmSearchEngine } from "../infrastructure/wasm-search-engine";
 import { vaultResources } from "../infrastructure/obsidian-resources";
@@ -10,16 +10,20 @@ export function createSearchSession(
   pluginId: string,
   locale: UiLocale = "ja",
 ): SearchSession {
-  const adapter = new WasmSearchEngine(vaultResources(app, pluginId), () => {
-    const url = URL.createObjectURL(
-      new Blob([source], { type: "text/javascript" }),
-    );
-    try {
-      return new Worker(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  });
+  const adapter = new WasmSearchEngine(
+    vaultResources(app, pluginId),
+    () => {
+      const url = URL.createObjectURL(
+        new Blob([source], { type: "text/javascript" }),
+      );
+      try {
+        return new Worker(url);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    },
+    Platform.isIosApp,
+  );
   return new SearchSession(
     adapter,
     {
@@ -29,6 +33,7 @@ export function createSearchSession(
       },
     },
     sessionLabels(locale),
+    Platform.isIosApp ? 2 : 60,
   );
 }
 export function sessionLabels(locale: UiLocale) {

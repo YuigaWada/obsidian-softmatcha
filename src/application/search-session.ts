@@ -27,6 +27,7 @@ export class SearchSession {
       error: (error: unknown) =>
         `準備エラー: ${error instanceof Error ? error.message : String(error)}`,
     },
+    private maxAttempts = 60,
   ) {
     this.state = labels.preparing;
   }
@@ -53,7 +54,7 @@ export class SearchSession {
         if (this.stopped || version !== this.version) return;
         this.state = this.labels.error(error);
       }
-      if (attempt < 60)
+      if (attempt < this.maxAttempts)
         this.cancel = this.scheduler.after(2000, () => void run(attempt + 1));
     };
     if (!this.stopped) void run(0);
@@ -62,16 +63,26 @@ export class SearchSession {
     value: string,
     config: Readonly<SearchConfig>,
     isCurrent: () => boolean = () => true,
+    onPartial?: (result: SearchResult) => void,
   ): Promise<SearchResult> {
+    this.engine.cancel?.();
     const query = searchText(value);
     const snapshot = { ...config };
     const next = this.tail.then(() => {
       if (this.stopped || !isCurrent()) return { results: [] };
-      return this.engine.search(query, snapshot);
+      return this.engine.search(query, snapshot, (result) => {
+        if (!this.stopped && isCurrent()) onPartial?.(result);
+      });
     });
     // A failed request must not poison later searches.
     this.tail = next.catch(() => {});
     return next;
+  }
+  setActive(active: boolean): void {
+    this.engine.setActive?.(active);
+  }
+  cancelSearch(): void {
+    this.engine.cancel?.();
   }
   dispose(): void {
     this.stopped = true;

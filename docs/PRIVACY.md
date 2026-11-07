@@ -12,7 +12,8 @@ The index/checkpoints contain note text, token offsets, paths, and corpus-derive
 statistics in IndexedDB. They are private vault-derived data, not anonymous
 metrics. The OS/app can clear this cache, causing reconstruction. Model weights,
 dictionary files, and settings are stored inside the plugin configuration
-folder. No local search operation sends note contents over the network.
+folder. On iOS, derived vector pages are also cached in IndexedDB, alongside
+bounded index sections. No local search operation sends note contents over the network.
 
 Enabled language models are downloaded automatically after startup if missing,
 unless **Download models automatically** is disabled. A manual ZIP import is

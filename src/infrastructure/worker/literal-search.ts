@@ -8,6 +8,7 @@ export function snippet(
   start: number,
   end: number,
   score = 1,
+  line?: number,
 ): Hit {
   let left = Math.max(0, start - 100);
   let right = Math.min(note.text.length, end + 150);
@@ -16,7 +17,7 @@ export function snippet(
     right++;
   return {
     path: note.path,
-    line: (note.text.slice(0, start).match(/\n/g) ?? []).length,
+    line: line ?? (note.text.slice(0, start).match(/\n/g) ?? []).length,
     excerpt: note.text.slice(left, right),
     score,
     match_ranges: [[start - left, end - left]],
@@ -39,10 +40,20 @@ export function literalSearch(
     pattern.lastIndex = 0;
     const seen = new Set<number>();
     let match: RegExpExecArray | null;
+    let cursor = 0,
+      line = 0;
     while ((match = pattern.exec(note.text))) {
-      const hit = snippet(note, match.index, match.index + match[0].length);
-      if (seen.has(hit.line)) continue;
-      seen.add(hit.line);
+      for (; cursor < match.index; cursor++)
+        if (note.text.charCodeAt(cursor) === 10) line++;
+      if (seen.has(line)) continue;
+      const hit = snippet(
+        note,
+        match.index,
+        match.index + match[0].length,
+        1,
+        line,
+      );
+      seen.add(line);
       hits.push(hit);
       if (hits.length >= limit) return hits;
     }

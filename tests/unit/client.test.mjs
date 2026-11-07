@@ -34,7 +34,10 @@ function fixture(options = {}) {
       this.cls = cls;
     }
   }
-  let modal, request, layoutReady, worker;
+  let modal, request, worker;
+  const layoutCallbacks = [];
+  const vaultEvents = new Map();
+  const intervals = [];
   class FakeWorker {
     requests = [];
     constructor() {
@@ -44,12 +47,42 @@ function fixture(options = {}) {
       this.requests.push(message);
       if (message.type === "search")
         request = { body: JSON.stringify(message.payload) };
+      if (message.type === "search" && options.partial) {
+        queueMicrotask(() =>
+          this.onmessage?.({
+            data: {
+              id: message.id,
+              partial: true,
+              value: {
+                results: [{ path: "literal.md" }],
+                mode: "wasm",
+                pendingSemantic: true,
+              },
+            },
+          }),
+        );
+        setTimeout(
+          () =>
+            this.onmessage?.({
+              data: {
+                id: message.id,
+                value: { results: [{ path: "semantic.md" }], mode: "wasm" },
+              },
+            }),
+          20,
+        );
+        return;
+      }
       queueMicrotask(() =>
         this.onmessage?.({
           data: {
             id: message.id,
             value:
-              message.type === "search" ? { results: [], mode: "wasm" } : true,
+              message.type === "search"
+                ? { results: [], mode: "wasm" }
+                : message.type === "sync-plan"
+                  ? []
+                  : true,
           },
         }),
       );
@@ -67,6 +100,9 @@ function fixture(options = {}) {
     addRibbonIcon() {}
     addSettingTab() {}
     registerInterval() {}
+    register() {}
+    registerEvent() {}
+    registerDomEvent() {}
     async saveData() {}
   }
   class SuggestModal {
@@ -104,10 +140,19 @@ function fixture(options = {}) {
     },
     setTimeout,
     clearTimeout,
-    window: { setTimeout, clearTimeout, setInterval: () => 0 },
+    window: {
+      setTimeout,
+      clearTimeout,
+      setInterval: (_fn, ms) => {
+        intervals.push(ms);
+        return 0;
+      },
+    },
     URL,
     Event,
     Blob,
+    AbortController,
+    document: { hidden: false },
     Worker: FakeWorker,
     queueMicrotask,
   };
@@ -120,6 +165,10 @@ function fixture(options = {}) {
       configDir: ".obsidian",
       getName: () => "test",
       getMarkdownFiles: () => [],
+      on: (event, fn) => {
+        vaultEvents.set(event, fn);
+        return {};
+      },
       adapter: {
         exists: async () => false,
         read: async () => {
@@ -129,14 +178,16 @@ function fixture(options = {}) {
     },
     workspace: {
       onLayoutReady: (callback) => {
-        layoutReady = callback;
+        layoutCallbacks.push(callback);
       },
     },
   };
   return {
     p,
     Element,
-    startup: () => layoutReady(),
+    startup: () => layoutCallbacks.forEach((callback) => callback()),
+    vaultEvents,
+    intervals,
     get worker() {
       return worker;
     },
@@ -279,5 +330,43 @@ test("startup automatic-download opt-out makes no network requests", async () =>
   f.startup();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(calls, 0);
+  f.p.onunload();
+});
+
+test("only iOS uses event-driven indexing, paged init and explicit query cancellation", async () => {
+  const f = fixture({
+    ios: true,
+    config: { searchLanguages: [], autoDownloadModels: false },
+  });
+  await f.p.onload();
+  f.startup();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual([...f.vaultEvents.keys()].sort(), [
+    "create",
+    "delete",
+    "modify",
+    "rename",
+  ]);
+  assert.deepEqual(f.intervals, [300000]);
+  assert.equal(
+    f.worker.requests.find((r) => r.type === "init").payload.mobile,
+    true,
+  );
+  f.p.command.callback();
+  f.modal.onClose();
+  assert.ok(f.worker.requests.some((r) => r.type === "cancel"));
+  f.p.onunload();
+});
+
+test("iOS early literal candidates are displayed before the semantic refresh", async () => {
+  const f = fixture({ partial: true });
+  await f.p.onload();
+  f.p.command.callback();
+  const first = await f.modal.getSuggestions("gold");
+  assert.equal(first[0].path, "literal.md");
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  const refreshed = await f.modal.getSuggestions("gold");
+  assert.equal(refreshed[0].path, "semantic.md");
+  f.modal.onClose();
   f.p.onunload();
 });

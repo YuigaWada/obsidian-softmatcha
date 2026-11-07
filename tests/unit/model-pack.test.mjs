@@ -89,3 +89,38 @@ test("pack schema, complete language set, and malformed archives are rejected", 
     validateModelPack(new Uint8Array([0, 1, 2]).buffer, f.catalog),
   );
 });
+
+test("iOS import releases consumed ZIP and outputs after persistence, including failed writes", async () => {
+  const f = fixture();
+  for (const fail of [false, true]) {
+    const input = f.archive();
+    let outputs;
+    const saved = new Map();
+    const installer = new ModelPackInstaller(
+      {
+        exists: async () => true,
+        mkdir: async () => {},
+        write: async (name, bytes) => {
+          if (fail) throw Error("disk full");
+          saved.set(name, new Uint8Array(bytes.slice(0)));
+        },
+      },
+      f.catalog,
+      async (data, catalog) => {
+        const pack = await validateModelPack(data, catalog, true);
+        outputs = Object.values(pack.files);
+        return pack;
+      },
+      () => true,
+      true,
+    );
+    if (fail) await assert.rejects(installer.install(input), /disk full/);
+    else {
+      await installer.install(input);
+      for (const [name, data] of Object.entries(f.files))
+        assert.deepEqual(saved.get(name), data);
+    }
+    assert.equal(input.byteLength, 0);
+    assert.ok(outputs.every((bytes) => bytes.byteLength === 0));
+  }
+});

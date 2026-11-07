@@ -7,6 +7,7 @@ import { InstalledModels } from "../../src/infrastructure/installed-models";
 import { WasmSearchEngine } from "../../src/infrastructure/wasm-search-engine";
 import { defaults } from "../../src/domain/search";
 import source from "softmatcha-worker-source";
+import { validateInWorker } from "../../src/composition/model-validation";
 
 const checks: string[] = [],
   requests: string[] = [];
@@ -67,7 +68,7 @@ async function run() {
       return new TextDecoder().decode(data);
     },
     write: async (path: string, data: ArrayBuffer) => {
-      files.set(path, new Uint8Array(data));
+      files.set(path, new Uint8Array(data.slice(0)));
     },
   };
   const config = {
@@ -77,7 +78,16 @@ async function run() {
   };
   const automatic = new AutomaticModels(
     new InstalledModels(store),
-    new DownloadModel(new GithubModelSource(), new ModelPackInstaller(store)),
+    new DownloadModel(
+      new GithubModelSource(),
+      new ModelPackInstaller(
+        store,
+        undefined,
+        validateInWorker,
+        () => true,
+        true,
+      ),
+    ),
   );
   const ensure = () =>
     automatic.ensure(
@@ -126,6 +136,7 @@ async function run() {
         new Worker(
           URL.createObjectURL(new Blob([source], { type: "text/javascript" })),
         ),
+      true,
     );
     try {
       assert(await engine.prepare(config), "Engine did not prepare");
@@ -178,6 +189,7 @@ async function run() {
       new Worker(
         URL.createObjectURL(new Blob([source], { type: "text/javascript" })),
       ),
+    true,
   );
   try {
     assert(await combined.prepare(config), "Combined models did not prepare");
@@ -190,6 +202,34 @@ async function run() {
     }
     record(
       "both languages enabled: shared files, model reuse and WASM queries: pass",
+    );
+    fixture.ja.text = "日本の研究者が本を読んでいます。".repeat(3000);
+    combined.setActive(false);
+    let completed = false;
+    const preparation = combined.prepare(config).then((ready) => {
+      completed = true;
+      return ready;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert(!completed, "Hidden indexing did not pause");
+    combined.setActive(true);
+    const start = performance.now();
+    const previous = combined.search("研究", config);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    combined.cancel();
+    const latest = await combined.search("happy", config);
+    await previous;
+    assert(
+      latest.results.some((hit) => hit.path === fixture.en.path),
+      "Latest query lost during indexing",
+    );
+    assert(
+      performance.now() - start < 5000,
+      "Search waited for background index completion",
+    );
+    assert(await preparation, "Background indexing did not resume");
+    record(
+      "iOS visibility pause, latest-query cancellation and search priority during long-note indexing: pass",
     );
   } finally {
     combined.dispose();
