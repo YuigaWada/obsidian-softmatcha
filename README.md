@@ -4,6 +4,11 @@ A fast and powerful search plugin for Obsidian, powered by [SoftMatcha 2](https:
 
 SoftMatcha-Search combines exact matching with word-similarity search to help you find notes even when your queries don't use the exact words in your vault. It supports both English and Japanese, with no external API or server required.
 
+<p align="center">
+  <img src="docs/images/search-macos.png" alt="SoftMatcha-Search on macOS with highlighted search results" width="720">
+  <img src="docs/images/search-ios.png" alt="SoftMatcha-Search on iOS with highlighted search results" width="300">
+</p>
+
 ## Installation
 
 Install **SoftMatcha-Search** from the [official Obsidian Community Plugins directory](https://obsidian.md/plugins?search=SoftMatcha-Search).
