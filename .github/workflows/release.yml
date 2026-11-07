@@ -46,6 +46,8 @@ jobs:
           .local/venv/bin/pip install --only-binary=:all: numpy==2.2.6
           .local/venv/bin/python scripts/models/prepare.py
           .local/venv/bin/python scripts/models/export.py
+          .local/venv/bin/python scripts/models/catalog.py
+          git diff --exit-code -- resources/model-catalog.json
       - name: Test with actual models and package
         if: github.event_name == 'push' || inputs.include_models
         run: |
