@@ -4,7 +4,7 @@
 
 **SoftMatcha Search** は、英語と日本語に対応したObsidian用のローカル検索プラグインです。
 ファイル名・本文の文字列一致ですぐに検索でき、任意のモデルを追加すると
-[SoftMatcha 2](https://github.com/softmatcha/softmatcha2)で意味の近い単語を含む箇所も探せます。
+[SoftMatcha 2](https://arxiv.org/abs/2602.10908)で意味の近い単語を含む箇所も探せます。
 
 [English](../README.md) · [使い方の詳細（英語）](USAGE.md)
 
@@ -88,6 +88,6 @@ fastTextモデルはCC BY-SA 3.0、日本語辞書は元の配布条件を維持
 
 ## 謝辞
 
-[SoftMatcha 2](https://github.com/softmatcha/softmatcha2)、[fastText](https://fasttext.cc/)、
+[SoftMatcha 2](https://arxiv.org/abs/2602.10908)、[fastText](https://fasttext.cc/)、
 [kuromoji.js](https://github.com/takuyaa/kuromoji.js)を使用しています。
 本プラグインは独立したコミュニティによる実装です。

@@ -4,7 +4,7 @@
 
 Fast, powerful **local vector search** for Obsidian. **English & Japanese · Desktop & mobile · No API key or server.**
 
-Powered by [SoftMatcha 2](https://github.com/softmatcha/softmatcha2): match similar words and phrase variations, highlight the passage, and jump straight to it.
+Powered by [SoftMatcha 2](https://arxiv.org/abs/2602.10908): match similar words and phrase variations, highlight the passage, and jump straight to it.
 
 **[Install from Community Plugins](https://community.obsidian.md/plugins/softmatcha-search)**
 
