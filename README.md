@@ -1,8 +1,12 @@
-# SoftMatcha-Search
+# SoftMatcha Search
 
-A fast and powerful search plugin for Obsidian, powered by [SoftMatcha 2](https://github.com/softmatcha/softmatcha2).
+**Find the passage—even when you forget the exact words.**
 
-SoftMatcha-Search combines exact matching with word-similarity search to help you find notes even when your queries don't use the exact words in your vault. It supports both English and Japanese, with no external API or server required.
+Fast, powerful **local vector search** for Obsidian. **English & Japanese · Desktop & mobile · No API key or server.**
+
+Powered by [SoftMatcha 2](https://github.com/softmatcha/softmatcha2): match similar words and phrase variations, highlight the passage, and jump straight to it.
+
+**[Install from Community Plugins](https://community.obsidian.md/plugins/softmatcha-search)**
 
 <table>
   <tr>
@@ -11,31 +15,20 @@ SoftMatcha-Search combines exact matching with word-similarity search to help yo
   </tr>
 </table>
 
-## Installation
+## Find. Open. Keep writing.
 
-Install **SoftMatcha-Search** from the [official Obsidian Community Plugins directory](https://obsidian.md/plugins?search=SoftMatcha-Search).
+- **Built for speed.** Rust + WebAssembly, with search running in a background worker.
+- **Search beyond exact words.** Combine exact matching with similarity-based phrase search.
+- **See the match.** Highlighted excerpts with direct navigation to the source line.
+- **Stay in flow.** Open results in a new tab or insert a `[[link]]` from the keyboard.
+- **Choose your footprint.** Enable English and Japanese models independently; exact search works without either.
 
-Press `Cmd + Shift + O` to open the search panel.
+Open **SoftMatcha Search: Search vault** from the command palette or tap the search ribbon icon. Set your shortcut in **Settings → Hotkeys**; try `Cmd/Ctrl + Shift + O`.
 
-## Features
+## Local vector search. Your notes stay yours.
 
-- **Fast search:** Search filenames and note contents without installing a model.
-- **Word-similarity search:** Find related words in English or Japanese using [SoftMatcha 2](https://github.com/softmatcha/softmatcha2).
-- **Highlighted results:** Preview matching excerpts and jump directly to the relevant line.
-- **Keyboard navigation:** Navigate results, open notes in a separate tab, or insert links to notes.
-- **Multilingual interface:** Choose English or Japanese for the interface independently of the search models.
-- **Flexible memory usage:** Enable or disable English and Japanese models independently. Exact matching remains available even when both models are disabled.
-
-Missing models for enabled languages download automatically from GitHub Releases in the background. Disable automatic downloads in settings to opt out. Notes and search queries are never uploaded.
+Search runs on your device. Missing models for enabled languages download automatically from GitHub Releases in the background; opt out in settings. After setup, search works offline. **Notes and search queries are never uploaded.** [Privacy details](docs/PRIVACY.md)
 
 ## License
 
-The original plugin code and project documentation are licensed under the [MIT License](LICENSE).
-
-Third-party components retain their respective licenses:
-
-- **SoftMatcha 2 port:** Apache-2.0 with attributed MIT-licensed portions.
-- **fastText models:** CC BY-SA 3.0.
-- **Japanese dictionary:** Original upstream license terms.
-
-See [Third-Party Notices](licenses/THIRD_PARTY_NOTICES.md) and [licenses](licenses/) for attribution and complete license texts.
+Original code and documentation: [MIT](LICENSE). SoftMatcha 2 port: Apache-2.0 with MIT portions. fastText models: CC BY-SA 3.0. Japanese dictionary: upstream terms. [Third-party notices](licenses/THIRD_PARTY_NOTICES.md) · [License texts](licenses/)
