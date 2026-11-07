@@ -160,7 +160,6 @@ export class Search extends SuggestModal<GroupedHit> {
           cls: "softmatcha-preview-line",
           attr: {
             type: "button",
-            "aria-label": `${row.line + 1}: ${row.text}`,
           },
         });
         line.tabIndex = -1;
