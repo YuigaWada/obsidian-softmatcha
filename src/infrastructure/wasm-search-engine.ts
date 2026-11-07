@@ -15,13 +15,21 @@ interface AssetManifest {
   dimensions?: number;
   dictionaries: string[];
   models?: Partial<
-    Record<"ja" | "en", { path: string; dimensions: number; version: string }>
+    Record<
+      "ja" | "en",
+      { path: string; dimensions: number; version: string; words?: number }
+    >
   >;
 }
 export interface LocalResources {
   exists?(path: string): Promise<boolean>;
   vaultId: string;
   binary(path: string): Promise<ArrayBuffer>;
+  pages?(
+    path: string,
+    pageBytes: number,
+    total: number,
+  ): AsyncIterable<ArrayBuffer>;
   text(path: string): Promise<string>;
   list(): DocumentVersion[];
   read(path: string): Promise<string>;
@@ -83,6 +91,7 @@ export class WasmSearchEngine implements SearchEngine {
         path: "",
         dimensions: manifest.dimensions ?? 300,
         version: manifest.version ?? "legacy-ja",
+        words: undefined,
       },
     };
     const models: ModelInput[] = [];
@@ -115,6 +124,35 @@ export class WasmSearchEngine implements SearchEngine {
         continue;
       }
       loaded.add(language);
+      if (this.mobile && this.resources.pages && spec.words) {
+        console.debug(
+          `[SoftMatcha] ${language}: importing bounded vector pages`,
+        );
+        await this.call("model-begin", {
+          language,
+          version: spec.version,
+          dimensions: spec.dimensions,
+          size: spec.words,
+          vocabulary: await this.resources.text(`${prefix}vocab.json`),
+        });
+        try {
+          const pageBytes = 1024 * spec.dimensions * 4;
+          for await (const vectors of this.resources.pages(
+            `${prefix}vectors.f32`,
+            pageBytes,
+            spec.words * spec.dimensions * 4,
+          )) {
+            if (this.stopped) throw new SearchFault("engineStopped");
+            await this.call("model-page", { language, vectors }, [vectors]);
+          }
+          await this.call("model-end", { language });
+          console.debug(`[SoftMatcha] ${language}: vector pages ready`);
+        } catch (error) {
+          if (!this.stopped) await this.call("model-abort", { language });
+          throw error;
+        }
+        continue;
+      }
       const model: ModelInput = {
         language,
         vectors: await this.resources.binary(`${prefix}vectors.f32`),
@@ -229,6 +267,7 @@ export class WasmSearchEngine implements SearchEngine {
         files.map((f) => f.path),
       );
       this.generation = generation;
+      console.debug(`[SoftMatcha] iOS index ready: ${files.length} files`);
       return true;
     }
     const documents = [];

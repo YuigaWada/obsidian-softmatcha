@@ -46,63 +46,107 @@ export class DiskVectors {
     }
     return meta ? new DiskVectors(store, prefix, meta) : undefined;
   }
-  static async install(
+  static async begin(
     store: MobileStore,
-    model: ModelInput,
-    yieldWork: () => Promise<void>,
+    spec: Omit<ModelInput, "vectors"> & { size: number },
   ) {
-    const prefix = `vectors-rows-v2:${model.language}:${model.version}`;
-    const raw = new Float32Array(model.vectors);
-    try {
-      const size = raw.length / model.dimensions;
-      if (!Number.isInteger(size) || size < 2 || size > 65536)
-        throw Error("Invalid model size");
-      const lengths = new Float32Array(size);
-      for (let start = 0; start < size; start += blockRows) {
-        const end = Math.min(start + blockRows, size);
-        const page = raw.slice(
-          start * model.dimensions,
-          end * model.dimensions,
-        );
-        for (let row = start; row < end; row++) {
-          let sum = 0;
-          for (let d = 0; d < model.dimensions; d++) {
-            const v = raw[row * model.dimensions + d];
-            sum = Math.fround(sum + Math.fround(v * v));
-          }
-          lengths[row] = Math.fround(Math.sqrt(sum) + 1e-12);
-        }
-        const entries: [string, unknown][] = [
-          [`${prefix}:${start / blockRows}`, new Blob([page])],
-        ];
-        for (let row = start; row < end; row++)
-          entries.push([
-            `${prefix}:word:${row}`,
-            page.slice(
-              (row - start) * model.dimensions,
-              (row - start + 1) * model.dimensions,
-            ),
-          ]);
+    const { size, dimensions, language, version } = spec;
+    if (
+      !Number.isInteger(size) ||
+      size < 2 ||
+      size > 65536 ||
+      !Number.isInteger(dimensions) ||
+      dimensions < 1 ||
+      dimensions > 1024
+    )
+      throw Error("Invalid model size");
+    const prefix = `vectors-rows-v2:${language}:${version}`;
+    const lengths = new Float32Array(size);
+    let next = 0,
+      finished = false;
+    // Incomplete imports are never exposed as usable models.
+    await store.remove([prefix]);
+    return {
+      async append(page: Float32Array) {
+        const entries: [string, unknown][] = [];
         try {
+          const count = Math.min(blockRows, size - next);
+          if (finished || count < 1 || page.length !== count * dimensions)
+            throw Error("Invalid vector page");
+          entries.push([
+            `${prefix}:${next / blockRows}`,
+            new Blob([page as Float32Array<ArrayBuffer>]),
+          ]);
+          for (let row = 0; row < count; row++) {
+            let sum = 0;
+            for (let d = 0; d < dimensions; d++) {
+              const v = page[row * dimensions + d];
+              sum = Math.fround(sum + Math.fround(v * v));
+            }
+            lengths[next + row] = Math.fround(Math.sqrt(sum) + 1e-12);
+            entries.push([
+              `${prefix}:word:${next + row}`,
+              page.slice(row * dimensions, (row + 1) * dimensions),
+            ]);
+          }
           await store.putMany(entries);
+          next += count;
         } finally {
           releaseBuffer(page);
           for (const [, value] of entries)
             if (value instanceof Float32Array) releaseBuffer(value);
         }
+      },
+      async finish() {
+        if (finished || next !== size) throw Error("Incomplete vector model");
+        const meta: Metadata = {
+          dimensions,
+          size,
+          vocabulary: JSON.parse(spec.vocabulary) as Record<string, number>,
+          lengths,
+          blobPages: true,
+        };
+        await store.put(prefix, meta);
+        finished = true;
+        return new DiskVectors(store, prefix, meta);
+      },
+      abort() {
+        if (!finished) {
+          finished = true;
+          releaseBuffer(lengths);
+        }
+      },
+    };
+  }
+  static async install(
+    store: MobileStore,
+    model: ModelInput,
+    yieldWork: () => Promise<void>,
+  ) {
+    const raw = new Float32Array(model.vectors);
+    const writer = await DiskVectors.begin(store, {
+      language: model.language,
+      version: model.version,
+      dimensions: model.dimensions,
+      vocabulary: model.vocabulary,
+      size: raw.length / model.dimensions,
+    });
+    try {
+      for (
+        let start = 0;
+        start < raw.length;
+        start += blockRows * model.dimensions
+      ) {
+        await writer.append(
+          raw.slice(start, start + blockRows * model.dimensions),
+        );
         await yieldWork();
       }
-      const meta: Metadata = {
-        dimensions: model.dimensions,
-        size,
-        vocabulary: JSON.parse(model.vocabulary) as Record<string, number>,
-        lengths,
-        blobPages: true,
-      };
-      await store.put(prefix, meta);
-      return new DiskVectors(store, prefix, meta);
+      return await writer.finish();
+    } catch (error) {
+      writer.abort();
+      throw error;
     } finally {
-      // The client transferred exclusive ownership to this Worker.
       releaseBuffer(raw);
       model.vectors = new ArrayBuffer(0);
     }

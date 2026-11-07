@@ -16,6 +16,9 @@ const { DiskVectors } = await import(
 test("vector row cache retains requested rows across eviction", async () => {
   const values = new Map();
   const store = {
+    remove: async (keys) => {
+      for (const key of keys) values.delete(key);
+    },
     get: async (key) => structuredClone(values.get(key)),
     put: async (key, value) => values.set(key, structuredClone(value)),
     putMany: async (entries) => {

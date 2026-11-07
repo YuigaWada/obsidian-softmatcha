@@ -39,6 +39,21 @@ export type WorkerRequest =
       payload: { language: SearchLanguage; version: string };
     }
   | { id: number; type: "model"; payload: ModelInput }
+  | {
+      id: number;
+      type: "model-begin";
+      payload: Omit<ModelInput, "vectors"> & { size: number };
+    }
+  | {
+      id: number;
+      type: "model-page";
+      payload: { language: SearchLanguage; vectors: ArrayBuffer };
+    }
+  | {
+      id: number;
+      type: "model-end" | "model-abort";
+      payload: { language: SearchLanguage };
+    }
   | { id: number; type: "dictionary"; payload: Record<string, ArrayBuffer> }
   | { id: number; type: "sync-plan"; payload: DocumentVersion[] }
   | {

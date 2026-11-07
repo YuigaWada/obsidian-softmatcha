@@ -110,6 +110,10 @@ export default class SoftMatchaPlugin extends Plugin {
     this.config = loadSearchConfig(saved);
     this.engineSignature = JSON.stringify([this.config.searchLanguages]);
     this.session = createSearchSession(this.app, this.manifest.id, this.locale);
+    if (Platform.isIosApp)
+      console.debug(
+        `[SoftMatcha] ${this.manifest.version}; ios-paged; WASM limit 32 MiB`,
+      );
     const store = modelAssetStore(this.app, this.manifest.id);
     this.automaticModels = new AutomaticModels(
       new InstalledModels(store),

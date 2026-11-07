@@ -54,6 +54,74 @@ const model = () => ({
   version: "fixture-v1",
 });
 const config = { searchLanguages: ["en"], similarity: 0.7, limit: 50 };
+test(
+  "iOS imports vector pages incrementally and publishes metadata only when complete",
+  { timeout: 10000 },
+  async () => {
+    const w = harness();
+    try {
+      await w.call("init", {
+        mobile: true,
+        models: [],
+        dictionaries: {},
+        vault: "stream-model-fixture",
+      });
+      const size = 2051,
+        raw = new Float32Array(size * 2);
+      raw.set([1, 0, 0, 1, 0, 1, -1, 0]);
+      const spec = {
+        language: "en",
+        version: "stream",
+        dimensions: 2,
+        size,
+        vocabulary: JSON.stringify({
+          gold: 0,
+          winner: 1,
+          medalist: 2,
+          silver: 3,
+        }),
+      };
+      await w.call("model-begin", spec);
+      await w.call("model-page", {
+        language: "en",
+        vectors: raw.slice(0, 2048).buffer,
+      });
+      assert.equal(
+        await w.call("model-check", { language: "en", version: "stream" }),
+        false,
+      );
+      await assert.rejects(
+        w.call("model-end", { language: "en" }),
+        /Incomplete/,
+      );
+      await w.call("model-page", {
+        language: "en",
+        vectors: raw.slice(2048, 4096).buffer,
+      });
+      await w.call("model-page", {
+        language: "en",
+        vectors: raw.slice(4096).buffer,
+      });
+      await w.call("model-end", { language: "en" });
+      assert.equal(
+        await w.call("model-check", { language: "en", version: "stream" }),
+        true,
+      );
+      await w.call("sync-note", {
+        file: { path: "paged.md", mtime: 1, size: 13 },
+        text: "gold medalist",
+      });
+      await w.call("sync-commit", ["paged.md"]);
+      assert.ok(
+        (await w.call("search", { query: "gold winner", config })).results.some(
+          (h) => h.path === "paged.md",
+        ),
+      );
+    } finally {
+      await w.close();
+    }
+  },
+);
 const files = [
   { path: "a.md", mtime: 1, size: 18 },
   { path: "b.md", mtime: 1, size: 6 },

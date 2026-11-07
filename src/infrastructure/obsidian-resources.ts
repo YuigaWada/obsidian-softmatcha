@@ -1,5 +1,6 @@
 import { TFile, type App, normalizePath } from "obsidian";
 import type { LocalResources } from "./wasm-search-engine";
+import { binaryPages } from "./binary-pages";
 /** Only this repository adapter knows Obsidian vault paths and file APIs. */
 export function vaultResources(app: App, pluginId: string): LocalResources {
   const root = normalizePath(
@@ -9,6 +10,12 @@ export function vaultResources(app: App, pluginId: string): LocalResources {
     exists: (path) => app.vault.adapter.exists(`${root}/${path}`),
     vaultId: `${app.vault.getName()}:${app.vault.configDir}:${pluginId}`,
     binary: (path) => app.vault.adapter.readBinary(`${root}/${path}`),
+    pages: (path, pageBytes, total) =>
+      binaryPages(
+        app.vault.adapter.getResourcePath(`${root}/${path}`),
+        pageBytes,
+        total,
+      ),
     text: (path) => app.vault.adapter.read(`${root}/${path}`),
     list: () =>
       app.vault

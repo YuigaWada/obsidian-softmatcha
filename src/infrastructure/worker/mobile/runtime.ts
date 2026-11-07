@@ -20,6 +20,7 @@ import type { WorkerRequest, WorkerReply } from "../protocol";
 import { MobileStore } from "./store";
 import { DiskVectors } from "./vectors";
 import { releaseBuffer } from "./buffers";
+import { boundedWasm } from "./wasm-memory";
 interface Part {
   key: string;
   line: number;
@@ -43,6 +44,10 @@ const sleep = () =>
 export class MobileRuntime {
   private store!: MobileStore;
   private models = new Map<SearchLanguage, DiskVectors>();
+  private imports = new Map<
+    SearchLanguage,
+    Awaited<ReturnType<typeof DiskVectors.begin>>
+  >();
   private documents = new Map<string, RecordEntry>();
   private japanese: ReturnType<typeof japaneseTokenizer> | undefined;
   private queue: WorkerRequest[] = [];
@@ -123,11 +128,13 @@ export class MobileRuntime {
     this.latest++;
     this.store?.close();
     this.models.clear();
+    for (const writer of this.imports.values()) writer.abort();
+    this.imports.clear();
   }
   private async execute(request: WorkerRequest): Promise<unknown> {
     switch (request.type) {
       case "init": {
-        initSync({ module: new Uint8Array(wasm).buffer });
+        initSync({ module: boundedWasm(wasm) });
         this.store = new MobileStore(request.payload.vault);
         for (const path of (await this.store.get<string[]>("paths")) ?? []) {
           const record = await this.store.get<RecordEntry>(`record:${path}`);
@@ -152,6 +159,35 @@ export class MobileRuntime {
           spec.language,
           await DiskVectors.install(this.store, spec, this.yieldWork),
         );
+        return true;
+      }
+      case "model-begin": {
+        const spec = request.payload;
+        this.imports.get(spec.language)?.abort();
+        this.imports.set(
+          spec.language,
+          await DiskVectors.begin(this.store, spec),
+        );
+        return true;
+      }
+      case "model-page": {
+        const writer = this.imports.get(request.payload.language);
+        if (!writer) throw Error("Model import not started");
+        await writer.append(new Float32Array(request.payload.vectors));
+        await this.yieldWork();
+        return true;
+      }
+      case "model-end": {
+        const language = request.payload.language,
+          writer = this.imports.get(language);
+        if (!writer) throw Error("Model import not started");
+        this.models.set(language, await writer.finish());
+        this.imports.delete(language);
+        return true;
+      }
+      case "model-abort": {
+        this.imports.get(request.payload.language)?.abort();
+        this.imports.delete(request.payload.language);
         return true;
       }
       case "dictionary":

@@ -59,6 +59,20 @@ window.addEventListener("error", (e) => finish(false, e.message));
 window.addEventListener("unhandledrejection", (e) => finish(false, e.reason));
 async function run() {
   const files = new Map<string, Uint8Array>();
+  const runId = Date.now();
+  const pages = async function* (
+    path: string,
+    pageBytes: number,
+    total: number,
+  ) {
+    const bytes = files.get(path);
+    assert(bytes && bytes.byteLength === total, "Invalid paged model size");
+    for (let offset = 0; offset < total; offset += pageBytes)
+      yield bytes!.buffer.slice(
+        bytes!.byteOffset + offset,
+        bytes!.byteOffset + Math.min(total, offset + pageBytes),
+      ) as ArrayBuffer;
+  };
   const store = {
     exists: async (path: string) => files.has(path),
     mkdir: async () => {},
@@ -123,8 +137,13 @@ async function run() {
     const engine = new WasmSearchEngine(
       {
         ...store,
-        vaultId: "ios-qa-" + language,
+        vaultId: "ios-qa-" + language + runId,
+        pages,
         binary: async (path: string) => {
+          assert(
+            !path.endsWith("vectors.f32"),
+            "iOS read the entire vector file",
+          );
           const raw = files.get(path);
           if (!raw) throw Error("Missing " + path);
           return new Uint8Array(raw).buffer;
@@ -174,7 +193,8 @@ async function run() {
   const combined = new WasmSearchEngine(
     {
       ...store,
-      vaultId: "ios-qa-combined",
+      vaultId: "ios-qa-combined" + runId,
+      pages,
       binary: async (path: string) => new Uint8Array(files.get(path)!).buffer,
       list: () =>
         documents.map((item) => ({
