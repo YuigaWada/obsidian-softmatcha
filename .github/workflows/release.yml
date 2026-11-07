@@ -35,11 +35,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        if: github.event_name == 'push' || inputs.include_models
+        with:
+          python-version: '3.12'
       - name: Prepare public model data
         if: github.event_name == 'push' || inputs.include_models
         run: |
           python3 -m venv .local/venv
-          .local/venv/bin/pip install numpy==2.2.6
+          .local/venv/bin/pip install --only-binary=:all: numpy==2.2.6
           .local/venv/bin/python scripts/models/prepare.py
           .local/venv/bin/python scripts/models/export.py
       - name: Test with actual models and package
